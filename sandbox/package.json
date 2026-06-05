@@ -21,6 +21,7 @@
     "run:attestation:api": "npm run build && node dist/src/cli/attestationApi.js",
     "run:recommendation:api": "npm run build && node dist/src/cli/recommendationApi.js",
     "run:platform:api": "npm run build && node dist/src/cli/platformApi.js",
+    "run:platform:mvp-smoke": "node scripts/platformMvpSmoke.mjs",
     "run:attestation:command-provider": "npm run build && node dist/src/cli/attestationCommandProvider.js",
     "run:agent": "npm run build && node dist/src/cli/agentRegistry.js",
     "run:agent:registry": "npm run build && node dist/src/cli/agentRegistry.js",

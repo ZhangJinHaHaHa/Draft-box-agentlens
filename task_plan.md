@@ -1,292 +1,231 @@
-# C-line MVP Overnight Task Plan
+# C-line MVP Task Plan
 
-Date: 2026-06-05
+Date: 2026-06-06
 Branch: `codex/c-platform-recommendation-foundation`
-PR policy for this goal: commit and push a draft PR update after verification; keep PR #1 in draft unless the user explicitly asks to mark it ready.
+PR policy: commit and push verified C-line MVP work to draft PR #1; keep the PR draft.
 
 ## Goal
 
-Advance C-line from local MVP-2 foundation toward a demo-ready middleware slice:
+Build the C-line local MVP into a complete demoable middleware loop without real external services:
 
-1. Users can sign in through local Web2 mock identity.
-2. Users have platform credits.
-3. Users can consume credits for LLM-assisted recommendation.
-4. Orders can move from paid to access bridge queued.
-5. Refund and access state are locally inspectable and testable.
-
-The next `/goal` should focus on work C-line can do independently without waiting for real Google OAuth, payment provider, wallet KMS, or chain writes.
+1. Mock Web2 user creation.
+2. Platform credits and paid LLM recommendation.
+3. Order creation and idempotent payment callback.
+4. Access bridge lifecycle.
+5. Exportable/migratable wallet HTTP surface.
+6. Refund evidence and responsibility classification.
+7. Developer profile, settlement ledger and local reputation read adapter.
+8. Admin inspect and end-to-end HTTP smoke.
 
 ## Current MVP Status
 
-MVP-0: mostly complete locally.
+MVP-0: complete locally.
 
 - Catalog expansion exists.
 - Rule recommendation engine exists.
 - Recommendation API exists.
 - Frontend `/recommend` integration exists.
-- Paid LLM recommendation foundation now exists on Platform API.
+- Paid LLM recommendation foundation exists on Platform API.
 
-MVP-1: only partially covered.
+MVP-1: complete enough for local C-line MVP.
 
-- Developer profile service is not implemented.
-- Agent catalog has vendor/source metadata, but no dedicated developer profile API.
+- Developer profile store/API exists.
+- `agentId -> developerId` link exists.
+- Developer profile data feeds settlement and reputation context.
 
-MVP-2: local foundation is active.
+MVP-2: complete locally.
 
 - Web2 mock Google wallet exists.
-- Exportable custodial wallet state model exists.
+- Exportable/migratable custodial wallet API exists.
 - Platform credits exist locally.
 - Paid LLM recommendation charges credits.
 - Frontend paid LLM recommendation UI exists.
 - Order state machine exists.
-- Paid order creates queued access bridge request.
-- Platform API state persists to local JSON.
 - Mock payment callback is idempotent.
-- Refund policy/state machine exists.
-- Approved full refund moves order to `refunded`.
+- Access bridge lifecycle API exists.
+- Platform API state persists to local JSON.
+- Refund evidence and review state machine exist.
 
-MVP-3: not started.
+MVP-3: local read/ledger foundation complete.
 
-- FARR/reputation read service not implemented.
-- Settlement ledger and reconciliation not implemented.
+- Settlement ledger MVP exists.
+- Weekly settlement periods, 20% platform fee, 80% developer share and 10% holdback exist.
+- Refund review freezes settlement; approved/partial refunds mark settlement refunded.
+- Local FARR/reputation read adapter exists.
+- Admin inspect endpoint exists.
 
-## Recommended Overnight Scope
+## Phase Status
 
 ### Phase 1: Frontend Paid LLM Recommendation UI
 
 Status: complete
 
-Why:
-
-- Highest demo value.
-- Connects the new Platform API credit model to a visible product flow.
-- Proves the "LLM recommendation consumes user platform credits" idea.
-
-Implementation:
-
-- Add platform API URL config, separate from recommendation API if needed.
-- On `/recommend`, offer free rule recommendation and paid LLM recommendation modes.
-- Use a local mock user for MVP if real auth is not available.
-- Display cost per LLM recommendation.
-- Display balance before/after.
-- Show insufficient-credit error.
-
 Validation:
 
-- Frontend unit tests for config/client behavior.
-- Browser/local smoke passed: run Platform API and frontend, click paid recommendation, see balance drop from `100` to `97`.
-- Frontend `npm test` and `npm run build` pass.
-
-Completion artifact:
-
-- Working `/recommend` paid LLM demo flow.
+- Frontend unit tests cover Platform API client behavior.
+- Browser smoke passed previously: paid recommendation balance drops from `100` to `97`.
 
 ### Phase 2: Platform API Persistence
 
 Status: complete
 
-Why:
-
-- Current Platform API uses in-memory state.
-- Without persistence, user credits/orders/refunds vanish on restart.
-- Persistence is needed before realistic payment callbacks.
-
-Implementation:
-
-- Add local JSON file store first, matching existing repo style.
-- Persist users, credit accounts, orders, access bridges, refunds.
-- Keep store injectable for tests.
-- Default runtime path under `.runtime/platform-api`.
-
 Validation:
 
-- Create user and charge LLM recommendation.
-- Restart Platform API with the same `PLATFORM_API_STATE_DIR`.
-- Read credit account and confirm balance remains `97`.
-- Unit test store save/load passed.
-
-Completion artifact:
-
-- Restart-safe local Platform API state.
+- Persistent store reloads users and credit balances.
+- Persistent store reloads developer, bridge and settlement state.
 
 ### Phase 3: Payment Callback Idempotency
 
 Status: complete
 
-Why:
-
-- Real payment providers retry callbacks.
-- Duplicate callbacks must not create duplicate access bridge requests.
-
-Implementation:
-
-- Add `paymentProvider`, `providerPaymentId`, `idempotencyKey`, `paidAmount` fields.
-- Replace or supplement `/mark-paid` with mock payment callback endpoint.
-- Repeated callback with same key returns the existing paid order and bridge.
-- Conflicting callback with same key but different order/payment data returns error.
-
 Validation:
 
 - First callback pays order and creates one bridge.
-- Second identical callback returns same bridge id.
-- Conflicting callback returns 409.
-- HTTP smoke passed before and after Platform API restart.
+- Duplicate callback returns the same bridge.
+- Conflicting callback returns `409`.
 
-Completion artifact:
+### Phase 4: Access Bridge Lifecycle API
 
-- Payment-safe order paid path for later Stripe/fiat integration.
+Status: complete
 
-### Phase 4: Wallet Export and Migration HTTP API
+Implemented:
 
-Status: pending
-
-Why:
-
-- User selected exportable/migratable custodial wallet mode.
-- State machine exists, but no HTTP surface yet.
-
-Implementation:
-
-- Add endpoints:
-  - request wallet export
-  - complete wallet export
-  - cancel wallet export
-  - migrate to external wallet
-- Require fresh Google auth and second factor flags in local mock request.
-- Do not expose real private keys.
+- `GET /api/access-bridges/:bridgeId`
+- `POST /api/access-bridges/:bridgeId/submit`
+- `POST /api/access-bridges/:bridgeId/confirm`
+- `POST /api/access-bridges/:bridgeId/fail`
+- `POST /api/access-bridges/:bridgeId/retry`
 
 Validation:
 
-- Export requires both auth flags.
-- Complete requires prior request.
-- Migration requires ownership proof and a new valid EVM address.
+- `queued -> submitted -> confirmed`
+- `queued/submitted -> failed`
+- `failed -> submitted`
+- `confirmed` cannot be resubmitted.
 
-Completion artifact:
+### Phase 5: Wallet Export and Migration HTTP API
 
-- Wallet portability flow that matches the chosen custody design.
+Status: complete
 
-### Phase 5: Access Bridge Lifecycle API
+Implemented:
 
-Status: pending
-
-Why:
-
-- Paid order currently queues bridge request.
-- Operators need a local surface for submit/confirm/fail/retry before real chain write.
-
-Implementation:
-
-- Add bridge query endpoint.
-- Add submit endpoint with mock chain tx hash.
-- Add confirm endpoint.
-- Add fail endpoint and retry path.
-- Keep real operator wallet adapter out of scope.
+- Request wallet export.
+- Complete wallet export.
+- Cancel wallet export.
+- Migrate to external wallet.
+- Mock export receipt has `privateKeyMaterial: null`.
 
 Validation:
 
-- queued -> submitted -> confirmed.
-- queued/submitted -> failed.
-- failed -> submitted retry.
-- Confirmed cannot be resubmitted.
-
-Completion artifact:
-
-- Local operator bridge workflow.
+- Export requires fresh Google auth and second factor flags.
+- Migration requires ownership proof and a different EVM address.
 
 ### Phase 6: Refund Evidence Fields
 
-Status: pending
+Status: complete
 
-Why:
+Implemented evidence fields:
 
-- Refund policy needs a clearer line between "agent capability failed" and "user design mismatch".
-
-Implementation:
-
-- Add evidence fields to refund request:
-  - expectedCapability
-  - actualFailure
-  - agentClaim
-  - userProvidedEvidenceUrl
-  - operatorReviewFinding
-- Keep current category model.
+- `expectedCapability`
+- `actualFailure`
+- `agentClaim`
+- `userProvidedEvidenceUrl`
+- `operatorReviewFinding`
 
 Validation:
 
 - `core_capability_failure` requires expected/actual evidence.
-- `design_mismatch` can be rejected with operator finding.
-- Security incident remains refundable path.
-
-Completion artifact:
-
-- More defensible refund review model.
+- `design_mismatch` rejection requires operator finding.
+- Security incident remains refundable.
 
 ### Phase 7: Developer Profile Local API
 
-Status: optional
+Status: complete
 
-Why:
+Implemented:
 
-- This moves MVP-1 forward.
-- It is valuable but less urgent than recommendation/order/access reliability.
-
-Implementation:
-
-- Add developer profile type and local store.
-- Link agentId -> developerId.
-- Include displayName, website, supportContact, walletAddress, trust fields.
+- `POST /api/developers`
+- `GET /api/developers/:developerId`
+- `POST /api/developers/:developerId/agents`
+- `GET /api/agents/:agentId/developer`
 
 Validation:
 
-- Create/read profile.
-- Agent catalog entry can resolve developer metadata.
+- Developer profile can be created.
+- Agent can link to developer.
+- Settlement and reputation can resolve developer context.
 
-Completion artifact:
+### Phase 8: Settlement Ledger MVP
 
-- MVP-1 developer profile foundation.
+Status: complete
 
-## Recommended Execution Order
+Implemented:
 
-1. Phase 5: Access bridge lifecycle API.
-2. Phase 4: Wallet export/migration HTTP API.
-3. Phase 6: Refund evidence fields.
-4. Phase 7: Developer profile local API only if time remains.
+- Settlement entry is created when order becomes paid.
+- Platform fee: 20%.
+- Developer share: 80%.
+- Holdback: 10% of developer share.
+- Weekly settlement period.
+- Developer settlement summary.
+- Settlement release endpoint.
+- Refund review freezes settlement.
 
-Reasoning:
+Validation:
 
-- Phase 1 gave immediate demo value.
-- Phase 2 and 3 made the money/access path restart-safe and callback-safe.
-- Phase 5 is now the next best C-line-only step because it completes the access bridge workflow.
-- Phase 4 and 6 harden user trust flows.
-- Phase 7 is valuable but can trail because it is less blocking for C-line transaction flow.
+- Paid order creates settlement entry.
+- Developer summary returns payable/holdback totals.
+- Refund review freezes settlement.
+- Approved/partial refund marks settlement refunded.
 
-## Do Not Do Overnight Without User Approval
+### Phase 9: FARR/Reputation Local Read Adapter
 
-- Do not connect real Google OAuth.
-- Do not generate, store, display, or export real private keys.
-- Do not integrate a real payment provider.
-- Do not write real chain transactions with an operator wallet.
-- Do not commit, push, or modify PR state.
-- Do not remove unrelated user changes.
+Status: complete
 
-## Manual Decision Points
+Implemented:
 
-1. Should `/recommend` use a temporary mock user id for demo, or should the UI first show a "mock Google login" step?
-   - Recommendation: mock login step, because it demonstrates Web2 onboarding and credit creation.
+- `GET /api/reputation/agents/:agentId`
+- `GET /api/reputation/developers/:developerId`
+- Source is `local-farr-adapter`.
 
-2. Should paid LLM recommendation replace free rules, or coexist?
-   - Recommendation: coexist. Free rules are the fallback and transparent baseline.
+Validation:
 
-3. Persistence choice: JSON file store or SQLite?
-   - Recommendation: JSON file store for MVP, because it is easy to inspect and matches local test style.
+- Reputation snapshots include paid orders, confirmed bridges, refunds, severe refunds and developer trust score.
 
-4. Should credits be charged on LLM failure?
-   - Current recommendation: no. Charge only when LLM returns a valid recommendation. Fallback to rules is free.
+### Phase 10: Platform Admin Inspect API
 
-5. Should access bridge be created before or after payment callback confirmation?
-   - Current decision: only after `paid`.
+Status: complete
 
-## Baseline Verification Commands
+Implemented:
+
+- `GET /api/admin/inspect`
+- Returns users, credit accounts, orders, bridges, refunds, payment callbacks, developer profiles, agent links, settlements and reputation snapshots.
+
+Validation:
+
+- Platform API tests cover admin snapshot counts.
+- End-to-end HTTP smoke checks admin inspect after full C-line flow.
+
+### Phase 11: End-to-End HTTP Smoke Script
+
+Status: complete
+
+Implemented:
+
+- `sandbox/scripts/platformMvpSmoke.mjs`
+- `npm run run:platform:mvp-smoke`
+
+Smoke covers:
+
+- mock Google user
+- paid LLM recommendation
+- order create
+- idempotent payment callback
+- bridge submit/confirm
+- wallet export/migration
+- refund evidence path
+- settlement/reputation/admin inspect
+
+## Verification Commands
 
 ```bash
 cd sandbox
@@ -297,14 +236,25 @@ npm test
 npm run build
 ```
 
-Current known baseline:
+Current known validation:
 
-- Sandbox: 731 tests passing.
-- Frontend: 87 tests passing.
-- Frontend build passing with existing large chunk warning.
+- Sandbox: 745 tests passing.
+- Frontend: 92 tests passing.
+- Platform MVP HTTP smoke: passing.
 
-## Suggested `/goal` Text
+## Explicit Non-Goals
 
-```text
-/goal 按照 Draft-box-agentlens 根目录 task_plan.md 推进 C 线 MVP：优先完成前端付费 LLM 推荐 UI，然后做 Platform API 本地持久化和 payment callback 幂等；每个阶段都运行对应测试和 HTTP/browser smoke，验证失败就回去修。不要 commit、push 或改 PR 状态，遇到真实 Google/支付/KMS/链写入相关内容只留 mock/adapter，不接真实外部服务。
-```
+- Do not connect real Google OAuth.
+- Do not integrate real payment providers.
+- Do not generate, store, display, or export real private keys.
+- Do not connect KMS/custody provider.
+- Do not write real operator wallet chain transactions.
+- Do not mark PR #1 ready.
+
+## Remaining Work After This MVP
+
+- Real Google OAuth callback after auth/security review.
+- Real payment provider signature verification.
+- Real custody/KMS architecture.
+- Real B-line contract write adapter.
+- Frontend operator/admin UI beyond the current minimal client integration.

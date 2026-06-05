@@ -238,11 +238,176 @@ test("platform API keeps design mismatch as non-refundable review path", async (
   });
   const resolveResponse = await callApi(store, "POST", `/api/refunds/${refund.refundId}/resolve`, {
     outcome: "rejected",
-    reviewNote: "The purchased agent works as described; request is a design mismatch."
+    reviewNote: "The purchased agent works as described; request is a design mismatch.",
+    operatorReviewFinding: "The requested workflow is outside the published agent design."
   });
 
   assert.equal(resolveResponse.statusCode, 200);
   assert.equal((resolveResponse.body.refund as Record<string, unknown>).status, "rejected");
+});
+
+test("platform API supports access bridge submit, fail, retry and confirm", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const order = await createPaidOrder(store);
+  const orderResponse = await callApi(store, "GET", `/api/orders/${order.orderId}`);
+  const bridge = orderResponse.body.accessBridge as Record<string, unknown>;
+
+  const submitted = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
+    chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  });
+  const failed = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/fail`, {
+    failureReason: "operator wallet unavailable"
+  });
+  const retried = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/retry`, {
+    chainAccessTxHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  });
+  const confirmed = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/confirm`);
+  const resubmit = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
+    chainAccessTxHash: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  });
+
+  assert.equal(submitted.statusCode, 200);
+  assert.equal((submitted.body.accessBridge as Record<string, unknown>).status, "submitted");
+  assert.equal((failed.body.accessBridge as Record<string, unknown>).status, "failed");
+  assert.equal((retried.body.accessBridge as Record<string, unknown>).status, "submitted");
+  assert.equal((confirmed.body.accessBridge as Record<string, unknown>).status, "confirmed");
+  assert.equal(resubmit.statusCode, 400);
+  assert.match(resubmit.body.error as string, /Cannot submit/);
+});
+
+test("platform API exposes wallet export and migration flows without private key material", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const user = await createGoogleUser(store);
+
+  const weakAuth = await callApi(store, "POST", `/api/web2/users/${user.platformUserId}/wallet/export/request`, {
+    freshGoogleAuth: true,
+    secondFactorVerified: false
+  });
+  const exportResponse = await callApi(store, "POST", `/api/web2/users/${user.platformUserId}/wallet/export/request`, {
+    freshGoogleAuth: true,
+    secondFactorVerified: true
+  });
+  const completeResponse = await callApi(store, "POST", `/api/web2/users/${user.platformUserId}/wallet/export/complete`);
+  const migrateResponse = await callApi(store, "POST", `/api/web2/users/${user.platformUserId}/wallet/migrate`, {
+    targetWalletAddress: "0x2222222222222222222222222222222222222222",
+    ownershipProofVerified: true
+  });
+
+  assert.equal(weakAuth.statusCode, 400);
+  assert.equal(exportResponse.statusCode, 200);
+  assert.equal((exportResponse.body.user as Record<string, unknown>).exportStatus, "ready");
+  assert.equal((exportResponse.body.exportReceipt as Record<string, unknown>).privateKeyMaterial, null);
+  assert.equal((completeResponse.body.user as Record<string, unknown>).exportStatus, "completed");
+  assert.equal((migrateResponse.body.user as Record<string, unknown>).custodyMode, "external_migrated");
+  assert.equal((migrateResponse.body.user as Record<string, unknown>).walletAddress, "0x2222222222222222222222222222222222222222");
+});
+
+test("platform API requires evidence for core capability refund claims", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const order = await createPaidOrder(store);
+
+  const missingEvidence = await callApi(store, "POST", "/api/refunds", {
+    orderId: order.orderId,
+    category: "core_capability_failure"
+  });
+  const withEvidence = await callApi(store, "POST", "/api/refunds", {
+    orderId: order.orderId,
+    category: "core_capability_failure",
+    expectedCapability: "Agent claims it can ingest internal docs.",
+    actualFailure: "It repeatedly fails before indexing the first document.",
+    agentClaim: "Self-hosted RAG setup."
+  });
+
+  assert.equal(missingEvidence.statusCode, 400);
+  assert.match(missingEvidence.body.error as string, /expectedCapability and actualFailure/);
+  assert.equal(withEvidence.statusCode, 201);
+  assert.equal((withEvidence.body.refund as Record<string, unknown>).eligibility, "review_required");
+});
+
+test("platform API links developers, creates settlement entries and exposes local reputation", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const developerResponse = await callApi(store, "POST", "/api/developers", {
+    displayName: "Dify Labs",
+    walletAddress: "0x3333333333333333333333333333333333333333",
+    supportContact: "support@example.com",
+    trustStatus: "verified",
+    trustScore: 82
+  });
+  const developer = developerResponse.body.developer as Record<string, unknown>;
+  await callApi(store, "POST", `/api/developers/${developer.developerId}/agents`, {
+    agentId: "dify"
+  });
+  const user = await createGoogleUser(store);
+  const orderResponse = await callApi(store, "POST", "/api/orders", {
+    userId: user.platformUserId,
+    agentId: "dify",
+    amount: "20.00",
+    currency: "CREDITS"
+  });
+  const order = orderResponse.body.order as Record<string, unknown>;
+  const paid = await callApi(store, "POST", "/api/payments/mock-callback", {
+    orderId: order.orderId,
+    paymentProvider: "stripe-mock",
+    providerPaymentId: "pay-1",
+    idempotencyKey: "idem-1",
+    paidAmount: "20.00"
+  });
+  const bridge = paid.body.bridge as Record<string, unknown>;
+  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
+    chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  });
+  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/confirm`);
+
+  const settlementResponse = await callApi(store, "GET", `/api/settlements/orders/${order.orderId}`);
+  const summaryResponse = await callApi(store, "GET", `/api/settlements/developers/${developer.developerId}/summary`);
+  const agentReputationResponse = await callApi(store, "GET", "/api/reputation/agents/dify");
+  const adminResponse = await callApi(store, "GET", "/api/admin/inspect");
+
+  const settlement = settlementResponse.body.settlement as Record<string, unknown>;
+  const summary = summaryResponse.body.summary as Record<string, unknown>;
+  const reputation = agentReputationResponse.body.reputation as Record<string, unknown>;
+  const snapshot = adminResponse.body.snapshot as Record<string, unknown>;
+
+  assert.equal(developerResponse.statusCode, 201);
+  assert.equal(settlement.developerId, developer.developerId);
+  assert.equal(settlement.platformFeeAmount, "4.00");
+  assert.equal(settlement.developerShareAmount, "16.00");
+  assert.equal(settlement.holdbackAmount, "1.60");
+  assert.equal(summary.payableAmount, "14.40");
+  assert.equal(reputation.source, "local-farr-adapter");
+  assert.equal(snapshot.developerProfiles, 1);
+  assert.equal(snapshot.settlements, 1);
+});
+
+test("platform API freezes settlement while a refund is under review", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const developerResponse = await callApi(store, "POST", "/api/developers", {
+    displayName: "Dify Labs",
+    walletAddress: "0x3333333333333333333333333333333333333333"
+  });
+  const developer = developerResponse.body.developer as Record<string, unknown>;
+  await callApi(store, "POST", `/api/developers/${developer.developerId}/agents`, {
+    agentId: "dify"
+  });
+  const order = await createPaidOrder(store);
+  const refundResponse = await callApi(store, "POST", "/api/refunds", {
+    orderId: order.orderId,
+    category: "security_incident"
+  });
+  const frozen = await callApi(store, "GET", `/api/settlements/orders/${order.orderId}`);
+
+  await callApi(store, "POST", `/api/refunds/${(refundResponse.body.refund as Record<string, unknown>).refundId}/review`, {
+    reviewerId: "ops-1"
+  });
+  await callApi(store, "POST", `/api/refunds/${(refundResponse.body.refund as Record<string, unknown>).refundId}/resolve`, {
+    outcome: "approved",
+    reviewNote: "Confirmed security incident.",
+    refundAmount: "20.00"
+  });
+  const refunded = await callApi(store, "GET", `/api/settlements/orders/${order.orderId}`);
+
+  assert.equal((frozen.body.settlement as Record<string, unknown>).status, "frozen");
+  assert.equal((refunded.body.settlement as Record<string, unknown>).status, "refunded");
 });
 
 test("platform API rejects order creation for an unknown user", async () => {

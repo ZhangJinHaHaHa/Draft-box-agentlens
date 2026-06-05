@@ -46,3 +46,59 @@ test("createPersistentPlatformApiStore reloads users and credit balances", async
     await rm(stateDir, { recursive: true, force: true });
   }
 });
+
+test("createPersistentPlatformApiStore reloads developer, bridge and settlement state", async () => {
+  const stateDir = await mkdtemp(`${tmpdir()}${sep}platform-api-store-`);
+
+  try {
+    const firstStore = createPersistentPlatformApiStore({
+      stateDir,
+      now: () => "2026-06-05T00:00:00.000Z"
+    });
+    const developer = firstStore.createDeveloperProfile({
+      displayName: "Dify Labs",
+      walletAddress: "0x3333333333333333333333333333333333333333",
+      trustStatus: "verified",
+      trustScore: 82
+    });
+    firstStore.linkAgentToDeveloper("dify", developer.developerId);
+    const user = firstStore.createGoogleMockUser({
+      googleSubject: "google-sub-1",
+      email: "user@example.com"
+    });
+    const order = firstStore.createOrder({
+      userId: user.platformUserId,
+      agentId: "dify",
+      amount: "20.00",
+      currency: "CREDITS"
+    });
+    const paid = firstStore.applyMockPaymentCallback({
+      orderId: order.orderId,
+      paymentProvider: "stripe-mock",
+      providerPaymentId: "pay-1",
+      idempotencyKey: "idem-1",
+      paidAmount: "20.00"
+    });
+    firstStore.submitAccessBridge(paid.bridge.bridgeId, {
+      chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    });
+    firstStore.confirmAccessBridge(paid.bridge.bridgeId);
+
+    const reloadedStore = createPersistentPlatformApiStore({
+      stateDir,
+      now: () => "2026-06-05T00:01:00.000Z"
+    });
+    const reloadedDeveloper = reloadedStore.getDeveloperForAgent("dify");
+    const bridge = reloadedStore.getAccessBridge(paid.bridge.bridgeId);
+    const settlement = reloadedStore.getSettlementForOrder(order.orderId);
+    const inspect = reloadedStore.inspect();
+
+    assert.equal(reloadedDeveloper.developer.developerId, developer.developerId);
+    assert.equal(bridge.status, "confirmed");
+    assert.equal(settlement.developerId, developer.developerId);
+    assert.equal(inspect.snapshot.developerProfiles, 1);
+    assert.equal(inspect.snapshot.settlements, 1);
+  } finally {
+    await rm(stateDir, { recursive: true, force: true });
+  }
+});

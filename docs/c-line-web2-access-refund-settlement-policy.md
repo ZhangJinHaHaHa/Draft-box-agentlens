@@ -1,6 +1,6 @@
 # C-line Web2 Access, Refund and Settlement Policy
 
-Date: 2026-06-05
+Date: 2026-06-06
 
 ## Current Decisions
 
@@ -74,6 +74,7 @@ Local foundation:
 - `sandbox/src/platform/accessBridge.ts` defines queued/submitted/confirmed/failed access bridge requests.
 - `POST /api/payments/mock-callback` marks an order paid through an idempotent local payment callback.
 - Local payment callback replay returns the existing access bridge instead of creating a duplicate.
+- Local Platform API exposes bridge query, submit, confirm, fail and retry endpoints.
 - Platform API state persists locally so access bridge requests survive restart.
 - These are dry-run state models only; real operator wallet writes remain behind B-line contract confirmation.
 
@@ -135,6 +136,8 @@ Required evidence:
 - logs or screenshots
 - expected behavior
 - actual behavior
+- agent claim
+- operator review finding for design-mismatch rejection
 
 Decision target:
 
@@ -146,8 +149,9 @@ Decision target:
 Local foundation:
 
 - `sandbox/src/platform/refundPolicy.ts` classifies refundable, review-required and non-refundable cases.
-- `core_capability_failure` is review-required, because it depends on reproducible evidence.
+- `core_capability_failure` is review-required and now requires expected/actual evidence.
 - `design_mismatch`, `user_setup_issue` and `subjective_quality` are not refundable by default.
+- Local Platform API freezes settlement while refund review is open.
 
 ## Settlement
 
@@ -162,6 +166,14 @@ Security incident rule:
 
 - Freeze settlement for affected Agent until review completes.
 - If the Agent is responsible, use unpaid settlement / holdback for refunds before platform subsidy.
+
+Local foundation:
+
+- `sandbox/src/platform/settlementLedger.ts` creates one settlement entry when an order becomes `paid`.
+- Local settlement entries calculate platform fee, developer share, holdback and payable amount.
+- Developer summary is available through `GET /api/settlements/developers/:developerId/summary`.
+- Refund review freezes settlement; approved or partial refunds mark settlement as refunded.
+- `sandbox/src/platform/reputationRead.ts` provides local FARR-style reputation snapshots for agents and developers.
 
 Open decisions:
 

@@ -1,6 +1,12 @@
 import crypto from "node:crypto";
 
-import { createAccessBridgeRequest, type AccessBridgeRequest } from "./accessBridge";
+import {
+  createAccessBridgeRequest,
+  markAccessBridgeConfirmed,
+  markAccessBridgeFailed,
+  markAccessBridgeSubmitted,
+  type AccessBridgeRequest
+} from "./accessBridge";
 import {
   assertPositiveInteger,
   createCreditAccount,
@@ -9,19 +15,45 @@ import {
   type PlatformCreditTransaction
 } from "./creditLedger";
 import {
+  createDeveloperProfile,
+  linkAgentToDeveloper,
+  type AgentDeveloperLink,
+  type DeveloperProfile,
+  type DeveloperTrustStatus
+} from "./developerProfile";
+import {
   transitionOrderStatus,
   type PlatformOrder,
   type PlatformOrderCurrency
 } from "./orderState";
 import {
+  buildAgentReputationSnapshot,
+  buildDeveloperReputationSnapshot,
+  type ReputationSnapshot
+} from "./reputationRead";
+import {
   createRefundCase as buildRefundCase,
   resolveRefundCase,
   startRefundReview,
   type RefundCase,
+  type RefundEvidence,
   type RefundIssueCategory
 } from "./refundPolicy";
 import {
+  createSettlementLedgerEntry,
+  freezeSettlementEntry,
+  releaseSettlementEntry,
+  resolveSettlementAfterRefund,
+  summarizeDeveloperSettlements,
+  type DeveloperSettlementSummary,
+  type SettlementLedgerEntry
+} from "./settlementLedger";
+import {
+  cancelWalletExport,
+  completeWalletExport,
   createGoogleBackedWallet,
+  migrateWalletToExternalAddress,
+  requestWalletExport,
   type GoogleIdentityProfile,
   type Web2UserWallet
 } from "./web2Wallet";
@@ -42,6 +74,7 @@ export interface CreatePlatformOrderInput {
 export interface CreateRefundInput {
   orderId: string;
   category: RefundIssueCategory;
+  evidence?: RefundEvidence;
 }
 
 export interface MockPaymentCallbackInput {
@@ -69,6 +102,8 @@ export interface PlatformApiStoreSnapshot {
   accessBridges: number;
   refunds: number;
   paymentCallbacks: number;
+  developerProfiles: number;
+  settlements: number;
 }
 
 export interface PlatformApiStoreState {
@@ -81,11 +116,44 @@ export interface PlatformApiStoreState {
   bridgeIdsByOrderId: Array<[string, string]>;
   refunds: RefundCase[];
   paymentCallbacks?: PlatformPaymentCallbackRecord[];
+  developerProfiles?: DeveloperProfile[];
+  agentDeveloperLinks?: AgentDeveloperLink[];
+  settlements?: SettlementLedgerEntry[];
+  settlementIdsByOrderId?: Array<[string, string]>;
   sequences: {
     creditSeq: number;
     orderSeq: number;
     bridgeSeq: number;
     refundSeq: number;
+    developerSeq?: number;
+    settlementSeq?: number;
+  };
+}
+
+export interface CreateDeveloperProfileInput {
+  displayName: string;
+  walletAddress: string;
+  websiteUrl?: string;
+  supportContact?: string;
+  trustStatus?: DeveloperTrustStatus;
+  trustScore?: number;
+}
+
+export interface PlatformAdminInspectSnapshot {
+  snapshot: PlatformApiStoreSnapshot;
+  users: Web2UserWallet[];
+  creditAccounts: PlatformCreditAccount[];
+  creditTransactions: PlatformCreditTransaction[];
+  orders: PlatformOrder[];
+  accessBridges: AccessBridgeRequest[];
+  refunds: RefundCase[];
+  paymentCallbacks: PlatformPaymentCallbackRecord[];
+  developerProfiles: DeveloperProfile[];
+  agentDeveloperLinks: AgentDeveloperLink[];
+  settlements: SettlementLedgerEntry[];
+  reputation: {
+    agents: ReputationSnapshot[];
+    developers: ReputationSnapshot[];
   };
 }
 
@@ -108,10 +176,16 @@ export class InMemoryPlatformApiStore {
   private bridgeIdsByOrderId = new Map<string, string>();
   private refunds = new Map<string, RefundCase>();
   private paymentCallbacks = new Map<string, PlatformPaymentCallbackRecord>();
+  private developerProfiles = new Map<string, DeveloperProfile>();
+  private agentDeveloperLinks = new Map<string, AgentDeveloperLink>();
+  private settlements = new Map<string, SettlementLedgerEntry>();
+  private settlementIdsByOrderId = new Map<string, string>();
   private creditSeq = 0;
   private orderSeq = 0;
   private bridgeSeq = 0;
   private refundSeq = 0;
+  private developerSeq = 0;
+  private settlementSeq = 0;
 
   constructor(
     private readonly now: () => string = () => new Date().toISOString(),
@@ -131,7 +205,9 @@ export class InMemoryPlatformApiStore {
       orders: this.orders.size,
       accessBridges: this.bridges.size,
       refunds: this.refunds.size,
-      paymentCallbacks: this.paymentCallbacks.size
+      paymentCallbacks: this.paymentCallbacks.size,
+      developerProfiles: this.developerProfiles.size,
+      settlements: this.settlements.size
     };
   }
 
@@ -146,11 +222,39 @@ export class InMemoryPlatformApiStore {
       bridgeIdsByOrderId: [...this.bridgeIdsByOrderId.entries()],
       refunds: [...this.refunds.values()],
       paymentCallbacks: [...this.paymentCallbacks.values()],
+      developerProfiles: [...this.developerProfiles.values()],
+      agentDeveloperLinks: [...this.agentDeveloperLinks.values()],
+      settlements: [...this.settlements.values()],
+      settlementIdsByOrderId: [...this.settlementIdsByOrderId.entries()],
       sequences: {
         creditSeq: this.creditSeq,
         orderSeq: this.orderSeq,
         bridgeSeq: this.bridgeSeq,
-        refundSeq: this.refundSeq
+        refundSeq: this.refundSeq,
+        developerSeq: this.developerSeq,
+        settlementSeq: this.settlementSeq
+      }
+    };
+  }
+
+  inspect(): PlatformAdminInspectSnapshot {
+    return {
+      snapshot: this.snapshot(),
+      users: [...this.users.values()],
+      creditAccounts: [...this.creditAccounts.values()],
+      creditTransactions: [...this.creditTransactions.values()],
+      orders: [...this.orders.values()],
+      accessBridges: [...this.bridges.values()],
+      refunds: [...this.refunds.values()],
+      paymentCallbacks: [...this.paymentCallbacks.values()],
+      developerProfiles: [...this.developerProfiles.values()],
+      agentDeveloperLinks: [...this.agentDeveloperLinks.values()],
+      settlements: [...this.settlements.values()],
+      reputation: {
+        agents: [...new Set([...this.orders.values()].map((order) => order.agentId))]
+          .map((agentId) => this.getAgentReputation(agentId)),
+        developers: [...this.developerProfiles.values()]
+          .map((developer) => this.getDeveloperReputation(developer.developerId))
       }
     };
   }
@@ -272,6 +376,84 @@ export class InMemoryPlatformApiStore {
     return bridgeId ? this.bridges.get(bridgeId) : undefined;
   }
 
+  getAccessBridge(bridgeId: string): AccessBridgeRequest {
+    const bridge = this.bridges.get(bridgeId);
+    if (!bridge) {
+      throw new PlatformApiError(404, `Access bridge "${bridgeId}" was not found.`);
+    }
+    return bridge;
+  }
+
+  submitAccessBridge(
+    bridgeId: string,
+    input: { chainAccessTxHash?: string } = {}
+  ): AccessBridgeRequest {
+    const txHash = input.chainAccessTxHash ?? deterministicTransactionHash(`${bridgeId}:${this.now()}`);
+    const bridge = markAccessBridgeSubmitted(this.getAccessBridge(bridgeId), txHash, this.now());
+    this.bridges.set(bridgeId, bridge);
+    this.persist();
+    return bridge;
+  }
+
+  confirmAccessBridge(bridgeId: string): AccessBridgeRequest {
+    const bridge = markAccessBridgeConfirmed(this.getAccessBridge(bridgeId), this.now());
+    this.bridges.set(bridgeId, bridge);
+    this.persist();
+    return bridge;
+  }
+
+  failAccessBridge(bridgeId: string, failureReason: string): AccessBridgeRequest {
+    const bridge = markAccessBridgeFailed(this.getAccessBridge(bridgeId), failureReason, this.now());
+    this.bridges.set(bridgeId, bridge);
+    this.persist();
+    return bridge;
+  }
+
+  requestUserWalletExport(
+    userId: string,
+    auth: { freshGoogleAuth: boolean; secondFactorVerified: boolean }
+  ): { user: Web2UserWallet; exportReceipt: { receiptId: string; privateKeyMaterial: null } } {
+    const user = requestWalletExport(this.getUser(userId), auth, this.now());
+    this.users.set(userId, user);
+    this.persist();
+    return {
+      user,
+      exportReceipt: {
+        receiptId: `wallet-export-${shortHash(`${userId}:${user.exportRequestedAt ?? this.now()}`)}`,
+        privateKeyMaterial: null
+      }
+    };
+  }
+
+  completeUserWalletExport(userId: string): Web2UserWallet {
+    const user = completeWalletExport(this.getUser(userId), this.now());
+    this.users.set(userId, user);
+    this.persist();
+    return user;
+  }
+
+  cancelUserWalletExport(userId: string): Web2UserWallet {
+    const user = cancelWalletExport(this.getUser(userId), this.now());
+    this.users.set(userId, user);
+    this.persist();
+    return user;
+  }
+
+  migrateUserWallet(
+    userId: string,
+    input: { targetWalletAddress: string; ownershipProofVerified: boolean }
+  ): Web2UserWallet {
+    const user = migrateWalletToExternalAddress(
+      this.getUser(userId),
+      input.targetWalletAddress,
+      input.ownershipProofVerified,
+      this.now()
+    );
+    this.users.set(userId, user);
+    this.persist();
+    return user;
+  }
+
   markOrderPaid(orderId: string): { order: PlatformOrder; bridge: AccessBridgeRequest } {
     const order = this.getOrder(orderId);
     const result = this.applyMockPaymentCallback({
@@ -338,6 +520,16 @@ export class InMemoryPlatformApiStore {
     this.orders.set(normalized.orderId, paidOrder);
     this.bridges.set(bridge.bridgeId, bridge);
     this.bridgeIdsByOrderId.set(normalized.orderId, bridge.bridgeId);
+    const settlement = createSettlementLedgerEntry(
+      {
+        settlementId: `settlement-${++this.settlementSeq}`,
+        order: paidOrder,
+        developerId: this.agentDeveloperLinks.get(paidOrder.agentId)?.developerId ?? "unassigned-developer"
+      },
+      at
+    );
+    this.settlements.set(settlement.settlementId, settlement);
+    this.settlementIdsByOrderId.set(paidOrder.orderId, settlement.settlementId);
     const paymentCallback: PlatformPaymentCallbackRecord = {
       ...normalized,
       bridgeId: bridge.bridgeId,
@@ -365,12 +557,14 @@ export class InMemoryPlatformApiStore {
         orderId: order.orderId,
         userId: order.userId,
         agentId: order.agentId,
-        category: input.category
+        category: input.category,
+        evidence: input.evidence
       },
       this.now()
     );
 
     this.refunds.set(refund.refundId, refund);
+    this.freezeSettlementForOrder(order.orderId, `Refund review opened: ${input.category}`, refund.refundId);
     this.persist();
     return refund;
   }
@@ -393,7 +587,7 @@ export class InMemoryPlatformApiStore {
   resolveRefund(
     refundId: string,
     outcome: "approved" | "rejected" | "partial_refund",
-    input: { reviewNote: string; refundAmount?: string }
+    input: { reviewNote: string; refundAmount?: string; operatorReviewFinding?: string }
   ): RefundCase {
     const refund = resolveRefundCase(this.getRefund(refundId), outcome, input, this.now());
     if (refund.status === "approved") {
@@ -402,8 +596,106 @@ export class InMemoryPlatformApiStore {
     }
 
     this.refunds.set(refundId, refund);
+    this.resolveSettlementForRefund(refund);
     this.persist();
     return refund;
+  }
+
+  createDeveloperProfile(input: CreateDeveloperProfileInput): DeveloperProfile {
+    const developerId = `developer-${++this.developerSeq}`;
+    const developer = createDeveloperProfile({ ...input, developerId }, this.now());
+    this.developerProfiles.set(developerId, developer);
+    this.persist();
+    return developer;
+  }
+
+  getDeveloperProfile(developerId: string): DeveloperProfile {
+    const developer = this.developerProfiles.get(developerId);
+    if (!developer) {
+      throw new PlatformApiError(404, `Developer "${developerId}" was not found.`);
+    }
+    return developer;
+  }
+
+  linkAgentToDeveloper(agentId: string, developerId: string): AgentDeveloperLink {
+    this.getDeveloperProfile(developerId);
+    const link = linkAgentToDeveloper({ agentId, developerId }, this.now());
+    this.agentDeveloperLinks.set(link.agentId, link);
+    this.persist();
+    return link;
+  }
+
+  getDeveloperForAgent(agentId: string): { link: AgentDeveloperLink; developer: DeveloperProfile } {
+    const link = this.agentDeveloperLinks.get(agentId);
+    if (!link) {
+      throw new PlatformApiError(404, `Developer link for agent "${agentId}" was not found.`);
+    }
+    return {
+      link,
+      developer: this.getDeveloperProfile(link.developerId)
+    };
+  }
+
+  getSettlementForOrder(orderId: string): SettlementLedgerEntry {
+    const settlementId = this.settlementIdsByOrderId.get(orderId);
+    if (!settlementId) {
+      throw new PlatformApiError(404, `Settlement for order "${orderId}" was not found.`);
+    }
+    const settlement = this.settlements.get(settlementId);
+    if (!settlement) {
+      throw new PlatformApiError(404, `Settlement "${settlementId}" was not found.`);
+    }
+    return settlement;
+  }
+
+  getDeveloperSettlementSummary(developerId: string): {
+    summary: DeveloperSettlementSummary;
+    entries: SettlementLedgerEntry[];
+  } {
+    const entries = [...this.settlements.values()].filter((entry) => entry.developerId === developerId);
+    return {
+      summary: summarizeDeveloperSettlements(developerId, entries),
+      entries
+    };
+  }
+
+  releaseSettlement(settlementId: string): SettlementLedgerEntry {
+    const entry = this.getSettlement(settlementId);
+    const released = releaseSettlementEntry(entry, this.now());
+    this.settlements.set(settlementId, released);
+    this.persist();
+    return released;
+  }
+
+  getAgentReputation(agentId: string): ReputationSnapshot {
+    const developer = this.agentDeveloperLinks.get(agentId)?.developerId;
+    return buildAgentReputationSnapshot(
+      agentId,
+      {
+        orders: [...this.orders.values()],
+        bridges: [...this.bridges.values()],
+        refunds: [...this.refunds.values()],
+        developer: developer ? this.developerProfiles.get(developer) : undefined
+      },
+      this.now()
+    );
+  }
+
+  getDeveloperReputation(developerId: string): ReputationSnapshot {
+    const developer = this.getDeveloperProfile(developerId);
+    const linkedAgentIds = [...this.agentDeveloperLinks.values()]
+      .filter((link) => link.developerId === developerId)
+      .map((link) => link.agentId);
+    return buildDeveloperReputationSnapshot(
+      developer,
+      {
+        linkedAgentIds,
+        orders: [...this.orders.values()],
+        bridges: [...this.bridges.values()],
+        refunds: [...this.refunds.values()]
+      },
+      this.now()
+    );
   }
 
   private hydrate(state: PlatformApiStoreState): void {
@@ -423,14 +715,50 @@ export class InMemoryPlatformApiStore {
     this.paymentCallbacks = new Map(
       (state.paymentCallbacks ?? []).map((callback) => [callback.idempotencyKey, callback])
     );
+    this.developerProfiles = new Map(
+      (state.developerProfiles ?? []).map((developer) => [developer.developerId, developer])
+    );
+    this.agentDeveloperLinks = new Map(
+      (state.agentDeveloperLinks ?? []).map((link) => [link.agentId, link])
+    );
+    this.settlements = new Map(
+      (state.settlements ?? []).map((settlement) => [settlement.settlementId, settlement])
+    );
+    this.settlementIdsByOrderId = new Map(state.settlementIdsByOrderId ?? []);
     this.creditSeq = state.sequences.creditSeq;
     this.orderSeq = state.sequences.orderSeq;
     this.bridgeSeq = state.sequences.bridgeSeq;
     this.refundSeq = state.sequences.refundSeq;
+    this.developerSeq = state.sequences.developerSeq ?? 0;
+    this.settlementSeq = state.sequences.settlementSeq ?? 0;
   }
 
   private persist(): void {
     this.onStateChange?.(this.exportState());
+  }
+
+  private getSettlement(settlementId: string): SettlementLedgerEntry {
+    const settlement = this.settlements.get(settlementId);
+    if (!settlement) {
+      throw new PlatformApiError(404, `Settlement "${settlementId}" was not found.`);
+    }
+    return settlement;
+  }
+
+  private freezeSettlementForOrder(orderId: string, reason: string, refundId: string): void {
+    const settlementId = this.settlementIdsByOrderId.get(orderId);
+    if (!settlementId) return;
+    const settlement = this.settlements.get(settlementId);
+    if (!settlement) return;
+    this.settlements.set(settlementId, freezeSettlementEntry(settlement, reason, refundId, this.now()));
+  }
+
+  private resolveSettlementForRefund(refund: RefundCase): void {
+    const settlementId = this.settlementIdsByOrderId.get(refund.orderId);
+    if (!settlementId) return;
+    const settlement = this.settlements.get(settlementId);
+    if (!settlement) return;
+    this.settlements.set(settlementId, resolveSettlementAfterRefund(settlement, refund, refund.updatedAt));
   }
 }
 
@@ -487,6 +815,10 @@ function deterministicWalletAddress(subject: string): string {
 
 function shortHash(value: string): string {
   return hashHex(`agentlens:web2:user:${value}`).slice(0, 12);
+}
+
+function deterministicTransactionHash(value: string): string {
+  return `0x${hashHex(`agentlens:mock-chain:${value}`)}`;
 }
 
 function hashHex(value: string): string {

@@ -1,5 +1,72 @@
 # C-line Progress Log
 
+## 2026-06-06
+
+Completed the expanded C-line local MVP goal.
+
+Implemented:
+
+- Access Bridge lifecycle API:
+  - query
+  - submit mock tx
+  - confirm
+  - fail
+  - retry
+- Wallet export / migration HTTP API:
+  - request export
+  - complete export
+  - cancel export
+  - migrate to external wallet
+  - no private key material is returned
+- Refund evidence fields and stricter responsibility model:
+  - `core_capability_failure` requires expected/actual evidence
+  - `design_mismatch` rejection requires operator finding
+- Developer Profile local API:
+  - create/read developer profile
+  - link agent to developer
+- Settlement Ledger MVP:
+  - paid order creates settlement entry
+  - 20% platform fee
+  - 80% developer share
+  - 10% holdback from developer share
+  - refund review freezes settlement
+  - approved/partial refund marks settlement refunded
+- FARR/Reputation local read adapter:
+  - agent reputation snapshot
+  - developer reputation snapshot
+- Platform Admin Inspect API:
+  - inspect users, credits, orders, bridges, refunds, callbacks, developers, settlements and reputation
+- End-to-end HTTP smoke script:
+  - `sandbox/scripts/platformMvpSmoke.mjs`
+  - `npm run run:platform:mvp-smoke`
+- Frontend minimal Platform API client integration:
+  - wallet export client
+  - wallet migration client
+  - access bridge read client
+  - admin inspect client
+
+Validation results:
+
+- `cd sandbox && npm test`: 745 passing.
+- `cd frontend && npm test`: 92 passing.
+- `PLATFORM_API_BASE_URL=http://127.0.0.1:8793 npm run run:platform:mvp-smoke`: passing.
+
+HTTP smoke observed:
+
+- recommendation engine: `mock-llm`
+- recommendation balance after charge: `97`
+- access bridge status: `confirmed`
+- wallet custody mode: `external_migrated`
+- refund status: `partial_refund`
+- settlement developer id: `developer-1`
+- admin snapshot included users, orders, bridges, refunds, callbacks, developers and settlements
+
+Open next action:
+
+- Run final frontend build.
+- Update local runbook and C-line status docs.
+- Commit and push to draft PR #1.
+
 ## 2026-06-05
 
 Created persistent planning files for future `/goal` execution:
@@ -8,39 +75,21 @@ Created persistent planning files for future `/goal` execution:
 - `findings.md`
 - `progress.md`
 
-Current local implementation status:
+Completed earlier:
 
-- Recommendation rule engine exists.
-- Recommendation API exists.
-- Frontend `/recommend` integration exists.
-- Platform API exists.
-- Web2 mock wallet, credits, paid LLM recommendation, order, access bridge, refund state machines exist.
-- Frontend paid LLM recommendation mode exists.
-- Platform API local JSON persistence exists.
-- Mock payment callback idempotency exists.
+- Recommendation rule engine.
+- Recommendation API.
+- Frontend `/recommend` integration.
+- Platform API.
+- Web2 mock wallet, credits, paid LLM recommendation, order, access bridge and refund state machines.
+- Frontend paid LLM recommendation mode.
+- Platform API local JSON persistence.
+- Mock payment callback idempotency.
 
-Latest validation results:
+Validation results:
 
 - `cd sandbox && npm test`: 737 passing.
 - `cd frontend && npm test`: 90 passing.
 - `cd frontend && npm run build`: passing with existing large chunk warning.
 - Browser smoke for paid LLM recommendation: passed.
 - Platform API HTTP smoke for paid LLM recommendation, persistence and payment callback idempotency: passed.
-
-Completed in this goal run:
-
-- Added Platform API URL config and frontend client.
-- Added `/recommend` free vs paid modes.
-- Added local mock Google connection inside the recommendation flow.
-- Added paid recommendation credit balance and charge display.
-- Added local JSON Platform API persistence under `.runtime/platform-api` by default.
-- Added `PLATFORM_API_STATE_DIR` config.
-- Added `POST /api/payments/mock-callback`.
-- Made payment callbacks idempotent by `idempotencyKey`.
-- Made conflicting callback replay return 409.
-
-Open next action:
-
-- Phase 5: add local access bridge lifecycle HTTP API.
-- Phase 4: expose wallet export / migration HTTP API.
-- Phase 6: add refund evidence fields and validation.

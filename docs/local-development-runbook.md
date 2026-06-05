@@ -104,7 +104,16 @@ Default API:
 - paid LLM recommendation: `POST http://127.0.0.1:8790/api/recommendations/llm`
 - order create: `POST http://127.0.0.1:8790/api/orders`
 - paid callback mock: `POST http://127.0.0.1:8790/api/payments/mock-callback`
+- access bridge read: `GET http://127.0.0.1:8790/api/access-bridges/:bridgeId`
+- access bridge submit: `POST http://127.0.0.1:8790/api/access-bridges/:bridgeId/submit`
+- access bridge confirm: `POST http://127.0.0.1:8790/api/access-bridges/:bridgeId/confirm`
+- wallet export request: `POST http://127.0.0.1:8790/api/web2/users/:userId/wallet/export/request`
+- wallet migration: `POST http://127.0.0.1:8790/api/web2/users/:userId/wallet/migrate`
 - refund request: `POST http://127.0.0.1:8790/api/refunds`
+- developer create: `POST http://127.0.0.1:8790/api/developers`
+- settlement by order: `GET http://127.0.0.1:8790/api/settlements/orders/:orderId`
+- agent reputation: `GET http://127.0.0.1:8790/api/reputation/agents/:agentId`
+- admin inspect: `GET http://127.0.0.1:8790/api/admin/inspect`
 
 Default recommendation charging:
 
@@ -131,78 +140,15 @@ PLATFORM_RECOMMENDATION_LLM_MODEL=... \
 npm run run:platform:api
 ```
 
-Smoke script:
+Full C-line MVP smoke script:
 
 ```bash
-node - <<'NODE'
-const api = "http://127.0.0.1:8790";
-async function post(path, body = {}) {
-  const response = await fetch(`${api}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  const json = await response.json();
-  if (!response.ok) throw new Error(`${path}: ${JSON.stringify(json)}`);
-  return json;
-}
+cd sandbox
+npm run run:platform:api
 
-const { user } = await post("/api/web2/google/mock", {
-  googleSubject: "google-smoke-1",
-  email: "smoke@example.com"
-});
-const paidRecommendation = await post("/api/recommendations/llm", {
-  userId: user.platformUserId,
-  query: "我需要一个自托管 RAG 知识库 Agent，最好有 API，可以接内部文档。",
-  limit: 2
-});
-const { order } = await post("/api/orders", {
-  userId: user.platformUserId,
-  agentId: "dify",
-  amount: "20.00",
-  currency: "CREDITS"
-});
-const paymentCallback = {
-  orderId: order.orderId,
-  paymentProvider: "stripe-mock",
-  providerPaymentId: "pay-smoke-1",
-  idempotencyKey: "idem-smoke-1",
-  paidAmount: "20.00"
-};
-const paid = await post("/api/payments/mock-callback", paymentCallback);
-const replay = await post("/api/payments/mock-callback", paymentCallback);
-const { refund } = await post("/api/refunds", {
-  orderId: order.orderId,
-  category: "security_incident"
-});
-const reviewing = await post(`/api/refunds/${refund.refundId}/review`, {
-  reviewerId: "ops-1"
-});
-const resolved = await post(`/api/refunds/${refund.refundId}/resolve`, {
-  outcome: "approved",
-  reviewNote: "Confirmed security incident.",
-  refundAmount: "20.00"
-});
-const finalOrderResponse = await fetch(`${api}/api/orders/${order.orderId}`);
-const finalOrder = await finalOrderResponse.json();
-
-console.log(JSON.stringify({
-  walletMode: user.custodyMode,
-  walletAddress: user.walletAddress,
-  recommendationEngine: paidRecommendation.engine,
-  recommendationCharged: paidRecommendation.charged,
-  recommendationBalanceAfter: paidRecommendation.creditAccount.balance,
-  recommendedAgentIds: paidRecommendation.recommendation.results.map((item) => item.agentId),
-  orderStatus: paid.order.status,
-  accessBridgeStatus: paid.bridge.status,
-  callbackReplay: replay.idempotentReplay,
-  callbackBridgeStable: paid.bridge.bridgeId === replay.bridge.bridgeId,
-  refundEligibility: refund.eligibility,
-  reviewStatus: reviewing.refund.status,
-  refundStatus: resolved.refund.status,
-  finalOrderStatus: finalOrder.order.status
-}, null, 2));
-NODE
+# In another terminal:
+cd sandbox
+PLATFORM_API_BASE_URL=http://127.0.0.1:8790 npm run run:platform:mvp-smoke
 ```
 
 Expected result:
@@ -211,10 +157,13 @@ Expected result:
 - paid recommendation engine is `mock-llm`
 - recommendation costs credits and recommends Dify / Flowise style candidates for self-hosted RAG
 - order status becomes `paid`
-- access bridge status is `queued`
+- access bridge reaches `confirmed`
 - duplicate payment callback returns the same bridge and `callbackReplay: true`
-- security incident refund is `refundable` and can be approved
-- approved full refund moves the order to `refunded`
+- wallet migration reaches `external_migrated`
+- refund evidence path can resolve to `partial_refund`
+- settlement resolves the linked developer
+- reputation source is `local-farr-adapter`
+- admin inspect includes users, orders, bridges, refunds, callbacks, developers and settlements
 
 ## Validation
 
@@ -233,13 +182,17 @@ Current C-line validation nails:
 2. Mock Google login creates a Web2 user with an exportable custodial wallet and identity weight `10`.
 3. Mock Google login creates a local platform credit account with `100` credits.
 4. Paid LLM recommendation consumes `3` credits and can only recommend catalog candidates.
-5. Local Platform API state persists across restart when `PLATFORM_API_STATE_DIR` is reused.
+5. Local Platform API state persists across restart when `PLATFORM_API_STATE_DIR` is reused, including developer, bridge and settlement state.
 6. Creating an order and receiving a mock payment callback auto-queues one access bridge request.
 7. Duplicate payment callbacks are idempotent and return the existing access bridge.
 8. Conflicting payment callback replay returns `409`.
-9. Security incidents enter the refundable path and can be approved after review.
-10. Approved full refunds move the order to `refunded`.
-11. Design mismatch cases stay non-refundable and should be rejected unless ops overrides policy.
+9. Access bridge supports submit, fail, retry and confirm.
+10. Wallet export/migration API returns no private key material.
+11. Core capability refunds require expected/actual evidence.
+12. Design mismatch cases stay non-refundable and require operator finding when rejected.
+13. Developer profiles can link to agents.
+14. Settlement ledger calculates platform fee, developer share, holdback and refund freeze state.
+15. Local FARR/reputation and admin inspect endpoints expose the MVP state.
 
 ## Full Local Chain Path
 

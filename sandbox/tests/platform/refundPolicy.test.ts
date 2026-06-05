@@ -23,13 +23,35 @@ test("createRefundCase records initial eligibility", () => {
       orderId: "order-1",
       userId: "user-1",
       agentId: "dify",
-      category: "core_capability_failure"
+      category: "core_capability_failure",
+      evidence: {
+        expectedCapability: "Index internal docs.",
+        actualFailure: "Indexing fails reproducibly."
+      }
     },
     "2026-06-05T00:00:00.000Z"
   );
 
   assert.equal(refundCase.status, "requested");
   assert.equal(refundCase.eligibility, "review_required");
+  assert.equal(refundCase.evidence.expectedCapability, "Index internal docs.");
+});
+
+test("core capability failure requires expected and actual evidence", () => {
+  assert.throws(
+    () =>
+      createRefundCase(
+        {
+          refundId: "refund-1",
+          orderId: "order-1",
+          userId: "user-1",
+          agentId: "dify",
+          category: "core_capability_failure"
+        },
+        "2026-06-05T00:00:00.000Z"
+      ),
+    /expectedCapability and actualFailure/
+  );
 });
 
 test("refund lifecycle supports requested -> under_review -> approved", () => {
@@ -105,5 +127,49 @@ test("approved refunds require an amount", () => {
         "2026-06-05T00:02:00.000Z"
       ),
     /refundAmount is required/
+  );
+});
+
+test("design mismatch rejection records operator finding", () => {
+  const reviewing = startRefundReview(
+    createRefundCase(
+      {
+        refundId: "refund-1",
+        orderId: "order-1",
+        userId: "user-1",
+        agentId: "dify",
+        category: "design_mismatch"
+      },
+      "2026-06-05T00:00:00.000Z"
+    ),
+    "ops-1",
+    "2026-06-05T00:01:00.000Z"
+  );
+
+  assert.throws(
+    () =>
+      resolveRefundCase(
+        reviewing,
+        "rejected",
+        { reviewNote: "Out of scope." },
+        "2026-06-05T00:02:00.000Z"
+      ),
+    /operatorReviewFinding/
+  );
+
+  const rejected = resolveRefundCase(
+    reviewing,
+    "rejected",
+    {
+      reviewNote: "Out of scope.",
+      operatorReviewFinding: "The requested workflow is not in the published agent claim."
+    },
+    "2026-06-05T00:02:00.000Z"
+  );
+
+  assert.equal(rejected.status, "rejected");
+  assert.equal(
+    rejected.evidence.operatorReviewFinding,
+    "The requested workflow is not in the published agent claim."
   );
 });

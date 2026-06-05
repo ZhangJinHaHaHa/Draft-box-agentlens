@@ -12,6 +12,7 @@ import type {
   RecommendationCatalogEntry,
   RecommendationResponse
 } from "../recommendation/recommendationTypes";
+import type { DeveloperTrustStatus } from "./developerProfile";
 import type { PlatformOrderCurrency } from "./orderState";
 import {
   InMemoryPlatformApiStore,
@@ -44,6 +45,7 @@ const REFUND_ISSUE_CATEGORIES = [
 ] as const satisfies readonly RefundIssueCategory[];
 
 const REFUND_OUTCOMES = ["approved", "rejected", "partial_refund"] as const;
+const DEVELOPER_TRUST_STATUSES = ["unverified", "verified", "suspended"] as const satisfies readonly DeveloperTrustStatus[];
 
 export interface PlatformApiRecommendationDependencies {
   catalog: readonly RecommendationCatalogEntry[];
@@ -92,6 +94,11 @@ export async function handlePlatformApiRequest(
       return;
     }
 
+    if (request.method === "GET" && url.pathname === "/api/admin/inspect") {
+      writeJson(response, 200, store.inspect());
+      return;
+    }
+
     if (request.method === "POST" && url.pathname === "/api/web2/google/mock") {
       const payload = await readJsonObject(request);
       const input: CreateGoogleMockUserInput = {
@@ -125,6 +132,71 @@ export async function handlePlatformApiRequest(
       parts[4] === "credits"
     ) {
       writeJson(response, 200, { creditAccount: store.getCreditAccount(parts[3]) });
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 7 &&
+      parts[0] === "api" &&
+      parts[1] === "web2" &&
+      parts[2] === "users" &&
+      parts[4] === "wallet" &&
+      parts[5] === "export" &&
+      parts[6] === "request"
+    ) {
+      const payload = await readJsonObject(request);
+      writeJson(response, 200, store.requestUserWalletExport(parts[3], {
+        freshGoogleAuth: readRequiredBoolean(payload, "freshGoogleAuth"),
+        secondFactorVerified: readRequiredBoolean(payload, "secondFactorVerified")
+      }));
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 7 &&
+      parts[0] === "api" &&
+      parts[1] === "web2" &&
+      parts[2] === "users" &&
+      parts[4] === "wallet" &&
+      parts[5] === "export" &&
+      parts[6] === "complete"
+    ) {
+      writeJson(response, 200, { user: store.completeUserWalletExport(parts[3]) });
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 7 &&
+      parts[0] === "api" &&
+      parts[1] === "web2" &&
+      parts[2] === "users" &&
+      parts[4] === "wallet" &&
+      parts[5] === "export" &&
+      parts[6] === "cancel"
+    ) {
+      writeJson(response, 200, { user: store.cancelUserWalletExport(parts[3]) });
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 6 &&
+      parts[0] === "api" &&
+      parts[1] === "web2" &&
+      parts[2] === "users" &&
+      parts[4] === "wallet" &&
+      parts[5] === "migrate"
+    ) {
+      const payload = await readJsonObject(request);
+      writeJson(response, 200, {
+        user: store.migrateUserWallet(parts[3], {
+          targetWalletAddress: readRequiredString(payload, "targetWalletAddress"),
+          ownershipProofVerified: readRequiredBoolean(payload, "ownershipProofVerified")
+        })
+      });
       return;
     }
 
@@ -177,6 +249,68 @@ export async function handlePlatformApiRequest(
       return;
     }
 
+    if (request.method === "GET" && parts.length === 3 && parts[0] === "api" && parts[1] === "access-bridges") {
+      writeJson(response, 200, { accessBridge: store.getAccessBridge(parts[2]) });
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "access-bridges" &&
+      parts[3] === "submit"
+    ) {
+      const payload = await readJsonObject(request);
+      writeJson(response, 200, {
+        accessBridge: store.submitAccessBridge(parts[2], {
+          chainAccessTxHash: readOptionalString(payload, "chainAccessTxHash")
+        })
+      });
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "access-bridges" &&
+      parts[3] === "retry"
+    ) {
+      const payload = await readJsonObject(request);
+      writeJson(response, 200, {
+        accessBridge: store.submitAccessBridge(parts[2], {
+          chainAccessTxHash: readOptionalString(payload, "chainAccessTxHash")
+        })
+      });
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "access-bridges" &&
+      parts[3] === "confirm"
+    ) {
+      writeJson(response, 200, { accessBridge: store.confirmAccessBridge(parts[2]) });
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "access-bridges" &&
+      parts[3] === "fail"
+    ) {
+      const payload = await readJsonObject(request);
+      writeJson(response, 200, {
+        accessBridge: store.failAccessBridge(parts[2], readRequiredString(payload, "failureReason"))
+      });
+      return;
+    }
+
     if (
       request.method === "POST" &&
       parts.length === 4 &&
@@ -192,7 +326,13 @@ export async function handlePlatformApiRequest(
       const payload = await readJsonObject(request);
       const refund = store.createRefund({
         orderId: readRequiredString(payload, "orderId"),
-        category: readRefundIssueCategory(payload.category)
+        category: readRefundIssueCategory(payload.category),
+        evidence: {
+          expectedCapability: readOptionalString(payload, "expectedCapability"),
+          actualFailure: readOptionalString(payload, "actualFailure"),
+          agentClaim: readOptionalString(payload, "agentClaim"),
+          userProvidedEvidenceUrl: readOptionalString(payload, "userProvidedEvidenceUrl")
+        }
       });
       writeJson(response, 201, { refund });
       return;
@@ -228,9 +368,111 @@ export async function handlePlatformApiRequest(
       writeJson(response, 200, {
         refund: store.resolveRefund(parts[2], readRefundOutcome(payload.outcome), {
           reviewNote: readRequiredString(payload, "reviewNote"),
-          refundAmount: readOptionalString(payload, "refundAmount")
+          refundAmount: readOptionalString(payload, "refundAmount"),
+          operatorReviewFinding: readOptionalString(payload, "operatorReviewFinding")
         })
       });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/developers") {
+      const payload = await readJsonObject(request);
+      writeJson(response, 201, {
+        developer: store.createDeveloperProfile({
+          displayName: readRequiredString(payload, "displayName"),
+          walletAddress: readRequiredString(payload, "walletAddress"),
+          websiteUrl: readOptionalString(payload, "websiteUrl"),
+          supportContact: readOptionalString(payload, "supportContact"),
+          trustStatus: readOptionalDeveloperTrustStatus(payload.trustStatus),
+          trustScore: readOptionalNumber(payload, "trustScore")
+        })
+      });
+      return;
+    }
+
+    if (request.method === "GET" && parts.length === 3 && parts[0] === "api" && parts[1] === "developers") {
+      writeJson(response, 200, { developer: store.getDeveloperProfile(parts[2]) });
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "developers" &&
+      parts[3] === "agents"
+    ) {
+      const payload = await readJsonObject(request);
+      writeJson(response, 201, {
+        link: store.linkAgentToDeveloper(readRequiredString(payload, "agentId"), parts[2])
+      });
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "agents" &&
+      parts[3] === "developer"
+    ) {
+      writeJson(response, 200, store.getDeveloperForAgent(parts[2]));
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "settlements" &&
+      parts[2] === "orders"
+    ) {
+      writeJson(response, 200, { settlement: store.getSettlementForOrder(parts[3]) });
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      parts.length === 5 &&
+      parts[0] === "api" &&
+      parts[1] === "settlements" &&
+      parts[2] === "developers" &&
+      parts[4] === "summary"
+    ) {
+      writeJson(response, 200, store.getDeveloperSettlementSummary(parts[3]));
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "settlements" &&
+      parts[3] === "release"
+    ) {
+      writeJson(response, 200, { settlement: store.releaseSettlement(parts[2]) });
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "reputation" &&
+      parts[2] === "agents"
+    ) {
+      writeJson(response, 200, { reputation: store.getAgentReputation(parts[3]) });
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "reputation" &&
+      parts[2] === "developers"
+    ) {
+      writeJson(response, 200, { reputation: store.getDeveloperReputation(parts[3]) });
       return;
     }
 
@@ -334,6 +576,23 @@ function readOptionalBoolean(payload: Record<string, unknown>, key: string): boo
   return value;
 }
 
+function readRequiredBoolean(payload: Record<string, unknown>, key: string): boolean {
+  const value = payload[key];
+  if (typeof value !== "boolean") {
+    throw new PlatformApiError(400, `${key} must be a boolean.`);
+  }
+  return value;
+}
+
+function readOptionalNumber(payload: Record<string, unknown>, key: string): number | undefined {
+  const value = payload[key];
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new PlatformApiError(400, `${key} must be a number.`);
+  }
+  return value;
+}
+
 function readRequiredAmount(payload: Record<string, unknown>, key: string): string | number {
   const value = payload[key];
   if (typeof value !== "string" && typeof value !== "number") {
@@ -372,6 +631,14 @@ function readRefundOutcome(value: unknown): "approved" | "rejected" | "partial_r
     throw new PlatformApiError(400, `outcome must be one of: ${REFUND_OUTCOMES.join(", ")}.`);
   }
   return value as "approved" | "rejected" | "partial_refund";
+}
+
+function readOptionalDeveloperTrustStatus(value: unknown): DeveloperTrustStatus | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" || !DEVELOPER_TRUST_STATUSES.includes(value as DeveloperTrustStatus)) {
+    throw new PlatformApiError(400, `trustStatus must be one of: ${DEVELOPER_TRUST_STATUSES.join(", ")}.`);
+  }
+  return value as DeveloperTrustStatus;
 }
 
 function writeJson(response: PlatformResponseLike, statusCode: number, body: unknown): void {
