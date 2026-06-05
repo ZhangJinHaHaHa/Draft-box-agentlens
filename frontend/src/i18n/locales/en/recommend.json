@@ -1,7 +1,43 @@
 {
   "page": {
     "title": "Recommend",
-    "subtitle": "Tell us what you want to build and what you care about — we'll surface candidates.",
-    "comingSoon": "The recommend engine arrives in Phase 2. For now, head to the agents list and filter your way through."
+    "subtitle": "Tell us what you want to build and what you care about — we'll surface candidates."
+  },
+  "form": {
+    "label": "Your need",
+    "placeholder": "Example: I need a low-risk customer-support knowledge-base agent, ideally with an API and fast help-center setup.",
+    "submit": "Generate recommendations",
+    "submitFree": "Generate free recommendations",
+    "submitPaid": "Use credits",
+    "modes": {
+      "free": "Free rules",
+      "paid": "Paid LLM"
+    }
+  },
+  "platform": {
+    "title": "Local Web2 account",
+    "cost": "{{count}} credits each",
+    "connect": "Mock Google",
+    "refresh": "Refresh account",
+    "connected": "Connected: {{email}}",
+    "disconnected": "Connect mock Google to spend platform credits.",
+    "balance": "{{count}} credits"
+  },
+  "results": {
+    "idle": "Enter a need to generate recommendations.",
+    "empty": "No candidates matched yet. Try another scenario or loosen the constraints.",
+    "open": "Open",
+    "meta": {
+      "free": "Free rule recommendation",
+      "paid": "Paid LLM recommendation",
+      "charged": "Charged {{count}} credits",
+      "balanceAfter": "Balance {{count}}",
+      "fallback": "Rules fallback"
+    }
+  },
+  "errors": {
+    "generic": "Recommendation service is unavailable.",
+    "platformApiMissing": "VITE_PLATFORM_API_URL is missing, so paid recommendations are unavailable.",
+    "connectFirst": "Connect a mock Google account first."
   }
 }

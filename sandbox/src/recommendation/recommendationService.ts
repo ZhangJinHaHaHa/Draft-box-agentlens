@@ -1,31 +1,18 @@
-import { hasAuditEvidence, type AccessType, type AgentCatalogEntry, type Complexity, type RiskLevel } from "./catalog";
-import type { I18nText } from "./i18nText";
-import { computeTrustTier } from "./trustTier";
-
-export type RecommendationPriority = "low-risk" | "fast-start" | "self-host" | "api-first" | "audited";
-
-export interface RecommendationRequest {
-  query: string;
-  scenarioIds?: string[];
-  accessTypes?: AccessType[];
-  maxRiskLevel?: RiskLevel;
-  complexity?: Complexity;
-  priorities?: RecommendationPriority[];
-  limit?: number;
-}
-
-export interface RecommendationMatch {
-  entry: AgentCatalogEntry;
-  score: number;
-  reasons: I18nText[];
-  matchedScenarioIds: string[];
-}
+import type {
+  RecommendationAccessType,
+  RecommendationCatalogEntry,
+  RecommendationComplexity,
+  RecommendationPriority,
+  RecommendationRequest,
+  RecommendationResponse,
+  RecommendationRiskLevel,
+  RecommendationText
+} from "./recommendationTypes";
 
 const DEFAULT_LIMIT = 5;
-
-const RISK_WEIGHT: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2 };
-const COMPLEXITY_WEIGHT: Record<Complexity, number> = { low: 0, medium: 1, high: 2 };
-const SOURCE_SCORE: Record<AgentCatalogEntry["source"], number> = {
+const RISK_WEIGHT: Record<RecommendationRiskLevel, number> = { low: 0, medium: 1, high: 2 };
+const COMPLEXITY_WEIGHT: Record<RecommendationComplexity, number> = { low: 0, medium: 1, high: 2 };
+const SOURCE_SCORE: Record<NonNullable<RecommendationCatalogEntry["source"]>, number> = {
   curated: 8,
   native: 6,
   listed: 2
@@ -38,7 +25,7 @@ const SCENARIO_KEYWORDS: Array<{ scenarioId: string; keywords: string[] }> = [
   { scenarioId: "developer-assistant", keywords: ["研发", "开发", "代码", "coding", "developer", "engineer"] },
   { scenarioId: "workflow-automation", keywords: ["自动化", "流程", "集成", "automation", "workflow", "integration"] },
   { scenarioId: "content-generation", keywords: ["内容", "写作", "文案", "视频", "图片", "content", "copy", "image", "video"] },
-  { scenarioId: "market-research", keywords: ["调研", "搜索", "竞品", "research", "search", "market"] },
+  { scenarioId: "market-research", keywords: ["调研", "搜索", "竞品", "引用", "research", "search", "market", "citation"] },
   { scenarioId: "ide-coding", keywords: ["ide", "vscode", "编辑器", "补全", "autocomplete"] },
   { scenarioId: "agentic-coding", keywords: ["自主编程", "长任务", "多文件", "agentic", "multi-file"] },
   { scenarioId: "ui-prototyping", keywords: ["ui", "界面", "原型", "prototype", "design"] },
@@ -47,7 +34,7 @@ const SCENARIO_KEYWORDS: Array<{ scenarioId: string; keywords: string[] }> = [
   { scenarioId: "multimodal-chat", keywords: ["多模态", "图片理解", "语音", "multimodal", "vision"] }
 ];
 
-const ACCESS_KEYWORDS: Array<{ accessType: AccessType; keywords: string[] }> = [
+const ACCESS_KEYWORDS: Array<{ accessType: RecommendationAccessType; keywords: string[] }> = [
   { accessType: "api", keywords: ["api", "sdk", "集成"] },
   { accessType: "saas", keywords: ["saas", "网页", "web", "托管"] },
   { accessType: "cli", keywords: ["cli", "terminal", "终端", "命令行"] },
@@ -56,68 +43,76 @@ const ACCESS_KEYWORDS: Array<{ accessType: AccessType; keywords: string[] }> = [
   { accessType: "cloud", keywords: ["cloud", "云", "托管平台"] }
 ];
 
-export function recommendAgents(
-  entries: readonly AgentCatalogEntry[],
+export function recommendFromCatalog(
+  catalog: readonly RecommendationCatalogEntry[],
   request: RecommendationRequest
-): RecommendationMatch[] {
+): RecommendationResponse {
   const query = normalize(request.query);
-  const scenarioIds = unique([
-    ...(request.scenarioIds ?? []),
-    ...inferScenarioIds(query)
-  ]);
-  const accessTypes = unique([
-    ...(request.accessTypes ?? []),
-    ...inferAccessTypes(query)
-  ]);
+  const scenarioIds = unique([...(request.scenarioIds ?? []), ...inferScenarioIds(query)]);
+  const accessTypes = unique([...(request.accessTypes ?? []), ...inferAccessTypes(query)]);
   const maxRiskLevel = request.maxRiskLevel ?? inferMaxRiskLevel(query);
   const complexity = request.complexity ?? inferComplexity(query);
-  const priorities = unique([
-    ...(request.priorities ?? []),
-    ...inferPriorities(query)
-  ]);
+  const priorities = unique([...(request.priorities ?? []), ...inferPriorities(query)]);
   const limit = normalizeLimit(request.limit);
 
-  return entries
-    .map((entry, index) => scoreEntry(entry, index, {
-      query,
+  const results = catalog
+    .map((entry, index) =>
+      scoreEntry(entry, index, {
+        query,
+        scenarioIds,
+        accessTypes,
+        maxRiskLevel,
+        complexity,
+        priorities
+      })
+    )
+    .filter((result) => result.score > 0)
+    .sort((a, b) => b.score - a.score || a.agentId.localeCompare(b.agentId))
+    .slice(0, limit);
+
+  return {
+    interpretation: {
       scenarioIds,
       accessTypes,
-      maxRiskLevel,
-      complexity,
-      priorities
-    }))
-    .filter((match) => match.score > 0)
-    .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name))
-    .slice(0, limit);
+      ...(maxRiskLevel ? { maxRiskLevel } : {}),
+      ...(complexity ? { complexity } : {}),
+      priorities,
+      limit
+    },
+    results
+  };
 }
 
 interface ScoreContext {
   query: string;
   scenarioIds: string[];
-  accessTypes: AccessType[];
-  maxRiskLevel?: RiskLevel;
-  complexity?: Complexity;
+  accessTypes: RecommendationAccessType[];
+  maxRiskLevel?: RecommendationRiskLevel;
+  complexity?: RecommendationComplexity;
   priorities: RecommendationPriority[];
 }
 
-function scoreEntry(entry: AgentCatalogEntry, index: number, context: ScoreContext): RecommendationMatch {
-  let score = SOURCE_SCORE[entry.source] - index * 0.01;
-  const reasons: I18nText[] = [];
+function scoreEntry(
+  entry: RecommendationCatalogEntry,
+  index: number,
+  context: ScoreContext
+): RecommendationResponse["results"][number] {
+  let score = SOURCE_SCORE[entry.source ?? "listed"] - index * 0.01;
+  const reasons: RecommendationText[] = [];
   const matchedScenarioIds: string[] = [];
-  const scenarioMap = new Map(entry.scenarios.map((item) => [item.id, item]));
-  const unsuitableIds = new Set(entry.unsuitableScenarios.map((item) => item.id));
+  const entryScenarioIds = new Set(entry.scenarioIds);
+  const unsuitableScenarioIds = new Set(entry.unsuitableScenarioIds);
 
   for (const scenarioId of context.scenarioIds) {
-    const scenario = scenarioMap.get(scenarioId);
-    if (scenario) {
+    if (entryScenarioIds.has(scenarioId)) {
       score += 36;
       matchedScenarioIds.push(scenarioId);
       reasons.push({
-        zh: `匹配场景：${scenario.label.zh}`,
-        en: `Matches scenario: ${scenario.label.en}`
+        zh: `匹配场景：${scenarioId}`,
+        en: `Matches scenario: ${scenarioId}`
       });
     }
-    if (unsuitableIds.has(scenarioId)) {
+    if (unsuitableScenarioIds.has(scenarioId)) {
       score -= 42;
     }
   }
@@ -132,8 +127,8 @@ function scoreEntry(entry: AgentCatalogEntry, index: number, context: ScoreConte
   if (keywordHits > 0) {
     score += Math.min(keywordHits * 7, 28);
     reasons.push({
-      zh: "名称、标签或说明命中了你的关键词",
-      en: "Name, tags or description match your keywords"
+      zh: "名称、标签或说明命中了关键词",
+      en: "Name, tags or description match the keywords"
     });
   }
 
@@ -141,41 +136,35 @@ function scoreEntry(entry: AgentCatalogEntry, index: number, context: ScoreConte
     const delta = RISK_WEIGHT[context.maxRiskLevel] - RISK_WEIGHT[entry.riskLevel];
     if (delta >= 0) {
       score += entry.riskLevel === "low" ? 8 : 4;
-      reasons.push({
-        zh: "风险等级符合偏好",
-        en: "Risk level fits the preference"
-      });
+      reasons.push({ zh: "风险等级符合偏好", en: "Risk level fits the preference" });
     } else {
       score += delta * 20;
     }
   }
 
   if (context.complexity) {
-    score += context.complexity === entry.complexity ? 8 : -Math.abs(COMPLEXITY_WEIGHT[context.complexity] - COMPLEXITY_WEIGHT[entry.complexity]) * 4;
+    score += context.complexity === entry.complexity
+      ? 8
+      : -Math.abs(COMPLEXITY_WEIGHT[context.complexity] - COMPLEXITY_WEIGHT[entry.complexity]) * 4;
   }
 
   for (const priority of context.priorities) {
     score += scorePriority(entry, priority, reasons);
   }
 
-  const tier = computeTrustTier({ entry }).tier;
-  score += tier * 4;
   if (entry.hasOnboardingGuide) {
     score += 5;
   }
-  if (hasAuditEvidence(entry)) {
+  if (entry.hasAuditEvidence) {
     score += 6;
   }
 
   if (reasons.length === 0 && score > 0) {
-    reasons.push({
-      zh: "作为基线候选进入结果",
-      en: "Included as a baseline candidate"
-    });
+    reasons.push({ zh: "作为基线候选进入结果", en: "Included as a baseline candidate" });
   }
 
   return {
-    entry,
+    agentId: entry.id,
     score: Math.round(score * 100) / 100,
     reasons: reasons.slice(0, 3),
     matchedScenarioIds
@@ -183,9 +172,9 @@ function scoreEntry(entry: AgentCatalogEntry, index: number, context: ScoreConte
 }
 
 function scorePriority(
-  entry: AgentCatalogEntry,
+  entry: RecommendationCatalogEntry,
   priority: RecommendationPriority,
-  reasons: I18nText[]
+  reasons: RecommendationText[]
 ): number {
   switch (priority) {
     case "low-risk":
@@ -213,8 +202,8 @@ function scorePriority(
       }
       return -2;
     case "audited":
-      if (hasAuditEvidence(entry)) {
-        reasons.push({ zh: "已有链上审计证据", en: "Has on-chain audit evidence" });
+      if (entry.hasAuditEvidence) {
+        reasons.push({ zh: "已有审计证据", en: "Has audit evidence" });
         return 14;
       }
       return -4;
@@ -227,13 +216,13 @@ function inferScenarioIds(query: string): string[] {
     .map((rule) => rule.scenarioId);
 }
 
-function inferAccessTypes(query: string): AccessType[] {
+function inferAccessTypes(query: string): RecommendationAccessType[] {
   return ACCESS_KEYWORDS
     .filter((rule) => rule.keywords.some((keyword) => query.includes(normalize(keyword))))
     .map((rule) => rule.accessType);
 }
 
-function inferMaxRiskLevel(query: string): RiskLevel | undefined {
+function inferMaxRiskLevel(query: string): RecommendationRiskLevel | undefined {
   if (["低风险", "稳妥", "合规", "safe", "low risk", "compliance"].some((keyword) => query.includes(keyword))) {
     return "low";
   }
@@ -243,7 +232,7 @@ function inferMaxRiskLevel(query: string): RiskLevel | undefined {
   return undefined;
 }
 
-function inferComplexity(query: string): Complexity | undefined {
+function inferComplexity(query: string): RecommendationComplexity | undefined {
   if (["简单", "快速", "新手", "easy", "simple", "fast"].some((keyword) => query.includes(keyword))) {
     return "low";
   }
@@ -273,7 +262,7 @@ function inferPriorities(query: string): RecommendationPriority[] {
   return priorities;
 }
 
-function countKeywordHits(entry: AgentCatalogEntry, query: string): number {
+function countKeywordHits(entry: RecommendationCatalogEntry, query: string): number {
   if (!query) return 0;
   const haystack = normalize([
     entry.name,
@@ -281,8 +270,7 @@ function countKeywordHits(entry: AgentCatalogEntry, query: string): number {
     entry.category,
     entry.intro.zh,
     entry.intro.en,
-    ...entry.tags,
-    ...entry.recommendedFor.flatMap((item) => [item.zh, item.en])
+    ...entry.tags
   ].join(" "));
 
   return collectQueryTerms(query)

@@ -73,6 +73,15 @@ describe("recommendAgents", () => {
     expect(results[0].reasons.length).toBeGreaterThan(0);
   });
 
+  it("handles compact Chinese queries without whitespace", () => {
+    const results = recommendAgents(entries, {
+      query: "客服知识库API低风险"
+    });
+
+    expect(results[0].entry.id).toBe("support-agent");
+    expect(results[0].matchedScenarioIds).toContain("customer-support");
+  });
+
   it("keeps unsuitable scenarios from winning on source weight alone", () => {
     const results = recommendAgents(entries, {
       query: "support",

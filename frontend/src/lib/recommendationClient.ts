@@ -52,7 +52,7 @@ export async function requestRecommendations(
   return parseRecommendationApiResponse(payload);
 }
 
-function parseRecommendationApiResponse(payload: unknown): RecommendationApiResponse {
+export function parseRecommendationApiResponse(payload: unknown): RecommendationApiResponse {
   if (!payload || typeof payload !== "object" || !Array.isArray((payload as { results?: unknown }).results)) {
     throw new Error("Recommendation API response must include a results array.");
   }

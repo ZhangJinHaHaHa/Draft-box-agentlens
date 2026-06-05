@@ -1,13 +1,20 @@
 export type PlatformOrderStatus = "pending" | "paid" | "failed" | "refunded";
+export type PlatformOrderCurrency = "USD" | "CREDITS";
 
 export interface PlatformOrder {
   orderId: string;
   userId: string;
   agentId: string;
   status: PlatformOrderStatus;
+  amount?: string;
+  currency?: PlatformOrderCurrency;
   createdAt: string;
   updatedAt: string;
   paidAt?: string;
+  paymentProvider?: string;
+  providerPaymentId?: string;
+  idempotencyKey?: string;
+  paidAmount?: string;
   refundedAt?: string;
   failureReason?: string;
   chainAccessTxHash?: string;

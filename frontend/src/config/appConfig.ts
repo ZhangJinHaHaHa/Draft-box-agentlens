@@ -15,6 +15,8 @@ export interface AppConfig {
   chainId: number;
   reportGatewayUrl?: string;
   appealApiUrl?: string;
+  recommendationApiUrl?: string;
+  platformApiUrl?: string;
   attestation?: AttestationUiConfig;
   marketplaceAddress?: string;
 }
@@ -36,6 +38,8 @@ export interface AppEnv {
   VITE_AUDIT_CHAIN_ID?: string;
   VITE_AUDIT_REPORT_GATEWAY_URL?: string;
   VITE_AUDIT_APPEAL_API_URL?: string;
+  VITE_PLATFORM_RECOMMENDATION_API_URL?: string;
+  VITE_PLATFORM_API_URL?: string;
   VITE_AUDIT_ATTESTATION_EXPECTED_PROVIDER_TYPE?: string;
   VITE_AUDIT_ATTESTATION_EXPECTED_MEASUREMENT?: string;
   VITE_AUDIT_ATTESTATION_EXPECTED_QUOTE_FORMAT?: string;
@@ -88,6 +92,12 @@ export function readAppConfig(env: AppEnv): AppConfigResult {
         : {}),
       ...(readOptionalEnvString(env.VITE_AUDIT_APPEAL_API_URL)
         ? { appealApiUrl: readOptionalEnvString(env.VITE_AUDIT_APPEAL_API_URL) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_PLATFORM_RECOMMENDATION_API_URL)
+        ? { recommendationApiUrl: readOptionalEnvString(env.VITE_PLATFORM_RECOMMENDATION_API_URL) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_PLATFORM_API_URL)
+        ? { platformApiUrl: readOptionalEnvString(env.VITE_PLATFORM_API_URL) }
         : {}),
       ...(attestation ? { attestation } : {}),
       ...(readOptionalEnvString(env.VITE_AUDIT_MARKETPLACE_ADDRESS)
