@@ -1,0 +1,9 @@
+/*
+ * AgentLens font stack.
+ *
+ * Geist Sans / Mono ship through Google Fonts (publicly hosted by Vercel).
+ * Latin glyphs render in Geist; Chinese fall back to Noto Sans SC. The
+ * Tailwind config's `font-sans` family lists both so fallback feels seamless.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap");

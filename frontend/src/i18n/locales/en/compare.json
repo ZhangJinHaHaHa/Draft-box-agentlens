@@ -1,0 +1,12 @@
+{
+  "tray": {
+    "title": "Compare tray",
+    "empty": "No agents added yet.",
+    "limit": "You can compare up to 4 agents.",
+    "open": "Open compare"
+  },
+  "page": {
+    "title": "Compare agents",
+    "subtitle": "This page lights up in Phase 2 — placeholder for now."
+  }
+}

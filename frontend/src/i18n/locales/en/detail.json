@@ -1,0 +1,73 @@
+{
+  "header": {
+    "addToCompare": "Add to compare",
+    "addedToCompare": "Added to compare",
+    "viewOfficial": "Open official site",
+    "viewAudit": "View audit report",
+    "requestAudit": "Request audit"
+  },
+  "summary": {
+    "title": "Decision summary",
+    "fitFor": "Fits for",
+    "notFitFor": "Doesn't fit for",
+    "nextStep": "Suggested next step",
+    "nextStepFallback": {
+      "curated": "Open the getting-started guide below and walk through it first.",
+      "listed": "Check the official docs and pricing before you commit.",
+      "native": "Review the audit report and on-chain evidence before renting."
+    }
+  },
+  "scenarios": {
+    "title": "Scenario fit",
+    "fit": "Good fit",
+    "unfit": "Avoid for",
+    "noUnfit": "No explicit unfit scenarios documented yet."
+  },
+  "risk": {
+    "title": "Risks & mitigation",
+    "level": "Risk level",
+    "notes": "Risk notes",
+    "mitigation": "Mitigation",
+    "mitigationFallback": "Pilot in a sandbox before expanding the scope."
+  },
+  "onboarding": {
+    "title": "Getting started",
+    "missing": "No platform-maintained guide yet — see official resources below.",
+    "tabs": {
+      "prereq": "Prerequisites",
+      "firstStep": "First step",
+      "steps": "Steps",
+      "pitfalls": "Pitfalls",
+      "official": "Official"
+    },
+    "platformAdvice": "AgentLens suggests",
+    "officialDocsLabel": "Official docs"
+  },
+  "trust": {
+    "title": "Trust evidence",
+    "tier": "Trust tier",
+    "evidence": "Evidence",
+    "audit": "Audit receipt",
+    "noChainEvidence": "Not registered on-chain. Only content-layer evidence is available."
+  },
+  "official": {
+    "title": "Official resources",
+    "homepage": "Homepage",
+    "docs": "Docs",
+    "pricing": "Pricing"
+  },
+  "native": {
+    "pricing": "Rental pricing",
+    "history": "Access history",
+    "reviews": "Reviews",
+    "noPricing": "No rental pricing configured yet."
+  },
+  "observations": {
+    "title": "Recent observations",
+    "empty": "No recent observations."
+  },
+  "errors": {
+    "notFound": "We couldn't find that agent.",
+    "tryHome": "Back to home"
+  }
+}

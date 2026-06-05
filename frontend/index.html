@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgentLens — 可信 AI Agent 选型平台</title>
+    <meta
+      name="description"
+      content="AgentLens 把 50+ 个 AI Agent 拆成结构化事实：场景适配、风险、起步成本、可信验证。让你用证据而不是承诺做选型。"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/popo-mascot.png" />
+    <script>
+      // Apply persisted theme before React mounts so the first paint matches.
+      (function () {
+        try {
+          var stored = localStorage.getItem("agentlens-theme");
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var theme = stored === "light" || stored === "dark"
+            ? stored
+            : prefersDark
+              ? "dark"
+              : "light";
+          document.documentElement.classList.add(theme);
+          document.documentElement.style.colorScheme = theme;
+        } catch (err) {
+          /* ignore storage errors */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,73 @@
+{
+  "header": {
+    "addToCompare": "加入对比",
+    "addedToCompare": "已加入对比",
+    "viewOfficial": "访问官方",
+    "viewAudit": "查看审计报告",
+    "requestAudit": "发起审计"
+  },
+  "summary": {
+    "title": "决策摘要",
+    "fitFor": "适合谁",
+    "notFitFor": "不适合谁",
+    "nextStep": "建议下一步",
+    "nextStepFallback": {
+      "curated": "查看下方“起步指南”，先按指南跑一遍。",
+      "listed": "查官方文档与报价，再决定要不要试。",
+      "native": "查看审计报告与链上证据，再决定是否租赁试用。"
+    }
+  },
+  "scenarios": {
+    "title": "场景适配",
+    "fit": "适合的场景",
+    "unfit": "不适合的场景",
+    "noUnfit": "暂无不适合场景的明确说明。"
+  },
+  "risk": {
+    "title": "风险与缓解",
+    "level": "风险等级",
+    "notes": "风险点",
+    "mitigation": "缓解建议",
+    "mitigationFallback": "建议先在小范围沙盒中试跑，再扩大覆盖。"
+  },
+  "onboarding": {
+    "title": "起步指南",
+    "missing": "这个 Agent 暂无平台维护的起步指南，请直接参考下方官方资源。",
+    "tabs": {
+      "prereq": "前置条件",
+      "firstStep": "第一步",
+      "steps": "操作步骤",
+      "pitfalls": "常见坑",
+      "official": "官方资源"
+    },
+    "platformAdvice": "AgentLens 建议",
+    "officialDocsLabel": "官方文档"
+  },
+  "trust": {
+    "title": "信任证据",
+    "tier": "信任层级",
+    "evidence": "证据",
+    "audit": "审计回执",
+    "noChainEvidence": "该 Agent 不在链上注册，仅有内容层证据。"
+  },
+  "official": {
+    "title": "官方资源",
+    "homepage": "官方主页",
+    "docs": "官方文档",
+    "pricing": "价格说明"
+  },
+  "native": {
+    "pricing": "租赁价格",
+    "history": "调用记录",
+    "reviews": "用户反馈",
+    "noPricing": "尚未配置租赁价格。"
+  },
+  "observations": {
+    "title": "最近观察",
+    "empty": "近期没有新的观察记录。"
+  },
+  "errors": {
+    "notFound": "未找到这个 Agent。",
+    "tryHome": "回到首页"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "title": "All agents",
+  "subtitle": "Combine filters across the dimensions that matter to find your first try.",
+  "searchPlaceholder": "Search by name, intro, tag or scenario",
+  "results": {
+    "count_one": "{{count}} result",
+    "count_other": "{{count}} results",
+    "empty": "No matching agents.",
+    "emptyHint": "Try removing some filters or changing the keyword.",
+    "showAll": "Show all agents"
+  },
+  "card": {
+    "intro": "Intro",
+    "scenarios": "Scenarios",
+    "risk": "Risk",
+    "complexity": "Complexity",
+    "onboarding": "Guide",
+    "hasOnboarding": "Yes",
+    "noOnboarding": "No"
+  },
+  "filters": {
+    "title": "Filters",
+    "scenario": "Scenario",
+    "type": "Agent type",
+    "access": "Access type",
+    "trustTier": "Trust tier",
+    "risk": "Risk level",
+    "complexity": "Complexity",
+    "onboarding": "Has getting-started guide",
+    "audit": "Has audit report",
+    "rentable": "Rentable on platform",
+    "clear": "Clear filters"
+  },
+  "sort": {
+    "label": "Sort",
+    "default": "Default",
+    "newest": "Newest first",
+    "trust": "By trust tier",
+    "risk": "By risk (low → high)",
+    "complexity": "By complexity (low → high)"
+  }
+}

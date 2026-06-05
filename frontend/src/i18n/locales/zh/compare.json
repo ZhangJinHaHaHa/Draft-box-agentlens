@@ -1,0 +1,12 @@
+{
+  "tray": {
+    "title": "对比清单",
+    "empty": "尚未加入任何 Agent。",
+    "limit": "最多对比 4 个 Agent。",
+    "open": "开始对比"
+  },
+  "page": {
+    "title": "对比 Agent",
+    "subtitle": "本页面会在阶段二上线，目前先用临时占位。"
+  }
+}
