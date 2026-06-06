@@ -14,6 +14,7 @@
     "run:listener": "npm run build && node dist/src/cli/listener.js",
     "run:listener:once": "npm run run:listener -- --once",
     "run:appeal:api": "npm run build && node dist/src/cli/appealApi.js",
+    "run:hosted-agent:api": "npm run build && node dist/src/cli/hostedAgentApi.js",
     "run:report:gateway": "npm run build && node dist/src/cli/reportGateway.js",
     "run:report:verify": "npm run build && node dist/src/cli/reportVerify.js",
     "run:evidence:verify": "npm run build && node dist/src/cli/evidenceVerify.js",

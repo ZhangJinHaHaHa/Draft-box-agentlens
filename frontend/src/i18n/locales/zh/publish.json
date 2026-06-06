@@ -1,0 +1,277 @@
+{
+  "badge": "开发者市场",
+  "title": "发布 Agent",
+  "subtitle": "先选择是否提交 Docker 镜像，再填写公开展示资料和对应的接入材料。提交镜像可进入平台可信审计路径；不提交镜像可先走托管 API/MCP 快速上架。",
+  "mode": {
+    "title": "是否提交 Docker 镜像？",
+    "description": "这个选择会决定平台能给你的 Agent 提供多强的可信证据。闭源开发者可以先不提交镜像；高风险或希望拿更高信任等级的 Agent 建议提交私有镜像用于审计。",
+    "selected": "已选择",
+    "continue": "继续填写",
+    "trustTitle": "平台如何使用这份材料",
+    "trustDescription": "公开 README 面向用户；审计材料面向平台沙箱。两者分离，避免把隐私材料当成营销信息公开。",
+    "options": {
+      "native-image": {
+        "title": "提交 Docker 镜像，走可信审计上架",
+        "subtitle": "适合高信任、高风险、希望进入推荐榜单的 Agent",
+        "body": "平台会用 manifest 拉取镜像，在沙箱中审计网络边界、行为证据和资源使用，并绑定 manifest hash + image digest 形成 Agent 身份指纹。"
+      },
+      "hosted-api": {
+        "title": "不提交镜像，走托管 API/MCP 快速上架",
+        "subtitle": "适合闭源 SaaS、早期验证、外部托管 Agent",
+        "body": "开发者自己运行服务，AgentLens 通过网关做访问权、计量、健康检查和黑盒测试。平台不会拿到镜像，但信任等级会低于已审计镜像路径。"
+      }
+    },
+    "trust": {
+      "readme": {
+        "title": "README 给用户看",
+        "body": "功能、场景、限制、示例和接入方式会进入市场卡片和详情页。"
+      },
+      "fingerprint": {
+        "title": "镜像路径可生成强指纹",
+        "body": "通过 manifest hash、image digest、审计报告和链上 token 绑定唯一版本，降低冒名和偷偷换版本的风险。"
+      },
+      "privacy": {
+        "title": "隐私材料不应公开",
+        "body": "API key、私有 prompt、内部地址和源码不应写入 README 或公开 manifest。后续应走 secret 管理和私有镜像拉取凭证。"
+      }
+    },
+    "help": {
+      "label": "Docker 镜像说明",
+      "title": "为什么平台鼓励提交镜像",
+      "body": "提交镜像不是提交源码。平台鼓励提交私有镜像，是为了让审计结果可复现、可验证、可绑定到具体版本，同时保护开发者的闭源实现。",
+      "benefitsTitle": "提交镜像的好处",
+      "recommendedTitle": "建议提交镜像的情况",
+      "notRequiredTitle": "可以先不提交的情况",
+      "benefits": {
+        "fingerprint": "获得更强 Agent 身份指纹：manifest hash + image digest + 审计报告 + 链上 token。",
+        "audit": "平台可在沙箱中验证网络访问、RPC 边界、资源使用和异常行为。",
+        "ranking": "通过审计后更适合进入高 Trust Tier、推荐结果和高信任榜单。",
+        "disputes": "发生申诉或纠纷时，平台可以复跑同一版本，判断是否越权或换版本。"
+      },
+      "recommended": {
+        "highRisk": "涉及资金、交易、企业权限、敏感数据处理或自动执行动作。",
+        "trustTier": "希望拿到平台审计徽章、强指纹和更高信任等级。",
+        "platformLease": "希望平台把租赁、访问权、评论和信誉闭环做得更完整。"
+      },
+      "notRequired": {
+        "closedSource": "闭源 SaaS 还在早期验证，暂时只愿意开放 API/MCP 接口。",
+        "earlyListing": "只想先进入市场展示，验证用户需求和定价。",
+        "externalSaas": "Agent 完全运行在开发者自己的云服务中，平台只做导航和访问网关。"
+      }
+    }
+  },
+  "details": {
+    "pathLabel": "当前发布路径",
+    "noPath": "未选择路径",
+    "changePath": "重新选择"
+  },
+  "readme": {
+    "title": "公开 README / 市场展示资料",
+    "description": "这些内容会给终端用户看，用于搜索、推荐、详情页和租赁决策。不要填写 API key、私有 prompt、内部地址或源码信息。",
+    "agentName": "Agent 唯一名称",
+    "displayName": "展示名称",
+    "displayNamePlaceholder": "Hermes Research Agent",
+    "summary": "一句话介绍",
+    "summaryPlaceholder": "这个 Agent 帮用户把链上风险事件整理成可执行的研究摘要。",
+    "useCases": "适用场景",
+    "useCasesPlaceholder": "DeFi 风险监控\n市场研究\n投研摘要",
+    "capabilities": "功能清单",
+    "capabilitiesPlaceholder": "读取公开数据源\n生成结构化报告\n输出风险提示",
+    "limitations": "不适用场景 / 限制",
+    "limitationsPlaceholder": "不直接托管资金\n不替用户签名交易",
+    "example": "输入输出示例",
+    "examplePlaceholder": "输入：分析过去 24 小时的协议风险事件\n输出：事件摘要、影响范围、建议动作",
+    "integrationType": "接入方式",
+    "docsUrl": "文档链接",
+    "supportUrl": "支持链接",
+    "validationTitle": "README 校验",
+    "ready": "资料完整",
+    "needsFixes": "需要补充",
+    "ok": "公开展示资料已满足当前市场展示的最小要求。",
+    "validation": {
+      "agentName": "Agent 唯一名称必须符合 ^[a-zA-Z0-9_-]{1,64}$。",
+      "summary": "请填写一句话介绍。",
+      "useCases": "请至少填写一个适用场景。",
+      "capabilities": "请至少填写一个功能点。",
+      "integrationType": "请填写接入方式。"
+    }
+  },
+  "manifest": {
+    "title": "审计 Manifest / 镜像材料",
+    "description": "这些字段给平台沙箱审计使用。镜像可以是私有 registry 地址，后续应配合一次性拉取凭证；不要把 secret 写进 manifest。",
+    "dockerImage": "Docker 镜像",
+    "allowedHosts": "允许访问的主机",
+    "allowedRpcEndpoints": "允许访问的 RPC 端点",
+    "manifestUrl": "Manifest URL",
+    "stakeOverride": "质押金额覆盖值 (ETH)",
+    "stakePlaceholder": "使用最低要求"
+  },
+  "hosted": {
+    "title": "托管 API/MCP 接入材料",
+    "description": "不提交镜像时，开发者自己运行 Agent。平台通过网关做访问权、计量、健康检查、黑盒测试和动态信誉记录。",
+    "endpointUrl": "Agent API / MCP Endpoint",
+    "schemaUrl": "OpenAPI / MCP Schema URL",
+    "healthcheckUrl": "Healthcheck URL",
+    "authMethod": "认证方式",
+    "authMethodPlaceholder": "平台托管 API key / OAuth client / 无需认证",
+    "submitTitle": "快速上架草稿",
+    "submitDescription": "这一路径会先保存 hosted Agent 草稿；确认资料后可提交黑盒审核。本地 MVP 已接入审批、secret、测试租赁、网关调用和计量摘要。",
+    "submitDraft": "保存快速上架草稿",
+    "savingDraft": "正在保存草稿",
+    "savedTitle": "草稿已生成",
+    "savedBody": "草稿 ID：{{hostedAgentId}}。可以继续提交黑盒审核，审核通过和网关接入后才能开放给用户租赁。",
+    "review": {
+      "submit": "提交黑盒审核",
+      "submitting": "正在提交审核",
+      "title": "已进入 Pending Review",
+      "fingerprint": "Hosted 指纹",
+      "healthcheck": "健康检查",
+      "healthcheckPassed": "通过，HTTP {{status}}，{{latency}}ms",
+      "healthcheckFailed": "失败，HTTP {{status}}",
+      "healthcheckMissing": "未配置，需人工验证 endpoint",
+      "draftMissing": "请先保存 hosted Agent 草稿。",
+      "noteFingerprint": "平台已按 README、endpoint、schema 和开发者地址生成 hosted 身份指纹。",
+      "noteReview": "这一路径没有镜像，只能先进入黑盒审核；Trust Tier 应低于已审计镜像路径。",
+      "noteGateway": "审核通过后可在本地 MVP 面板继续批准、配置 secret、创建测试租赁并验证 Gateway。"
+    },
+    "gateway": {
+      "title": "Gateway 本地 MVP",
+      "description": "用于验证不提交镜像路径的租赁闭环：审批、平台代持密钥、租赁 token、调用代理、限流与计量。这里还不是正式支付/分账/退款系统。",
+      "approved": "已批准",
+      "pending": "待批准",
+      "yes": "是",
+      "no": "否",
+      "metrics": {
+        "secret": "Secret 已配置",
+        "activeLeases": "有效租赁",
+        "totalRequests": "请求数",
+        "failedRequests": "失败/拒绝"
+      },
+      "actions": {
+        "approve": "批准上架（本地）",
+        "approving": "正在批准",
+        "refresh": "刷新摘要",
+        "refreshing": "正在刷新",
+        "configureSecret": "配置 Gateway Secret",
+        "configuringSecret": "正在配置",
+        "createLease": "创建测试租赁",
+        "creatingLease": "正在创建",
+        "invoke": "测试调用 Gateway",
+        "invoking": "正在调用"
+      },
+      "secret": {
+        "headerName": "下游认证 Header",
+        "headerValue": "下游认证密钥",
+        "headerValuePlaceholder": "只用于本地模拟 vault",
+        "note": "本地 MVP 会把下游密钥存入 runtime JSON，生产环境应替换成 KMS/Vault/托管 Secret Manager，且需要管理员权限保护。"
+      },
+      "lease": {
+        "userId": "测试用户 ID",
+        "durationHours": "租赁时长（小时）",
+        "maxRequests": "最大请求数",
+        "maxRequestsPerMinute": "每分钟上限",
+        "leaseId": "租赁 ID",
+        "expiresAt": "过期时间",
+        "accessToken": "访问 token",
+        "tokenNote": "token 只在创建时返回；后端落盘只保存 hash。真实租赁上线后应由支付/积分订单创建。"
+      },
+      "invoke": {
+        "payload": "测试调用 JSON",
+        "result": "调用结果",
+        "error": "调用错误"
+      },
+      "messages": {
+        "approved": "Hosted Agent 已在本地 MVP 中批准。",
+        "secretConfigured": "Gateway Secret 已配置，Header：{{header}}。",
+        "leaseCreated": "测试租赁已创建，可以用 token 调用 Gateway。",
+        "invoked": "Gateway 调用完成，计量摘要已刷新。"
+      },
+      "errors": {
+        "draftMissing": "请先保存 hosted Agent 草稿。",
+        "reviewMissing": "请先提交并完成黑盒审核记录。",
+        "approvalMissing": "请先批准 hosted Agent。",
+        "secretMissing": "请填写下游认证 Header 和密钥。",
+        "gatewayNotReady": "请先批准 Agent 并配置 Gateway Secret。",
+        "leaseMissing": "请先创建测试租赁 token。",
+        "leaseUserId": "测试用户 ID 不能为空。",
+        "durationHours": "租赁时长必须是 1 到 720 的整数。",
+        "maxRequests": "最大请求数必须是 1 到 100000 的整数。",
+        "maxRequestsPerMinute": "每分钟上限必须是 1 到 1000 的整数。",
+        "payloadJson": "测试调用 payload 必须是合法 JSON。"
+      }
+    },
+    "validation": {
+      "title": "托管接入校验",
+      "ready": "可保存",
+      "needsFixes": "需要补充",
+      "ok": "托管 API/MCP 接入材料已满足草稿要求。",
+      "fixHosted": "请先补齐托管 API/MCP 接入材料。",
+      "apiMissing": "Hosted Agent API URL 未配置，无法保存草稿。",
+      "endpointUrl": "请填写有效的 http(s) Agent endpoint。",
+      "schemaUrl": "请填写有效的 http(s) schema URL。",
+      "healthcheckUrl": "Healthcheck URL 必须是有效的 http(s) URL，或保持为空。",
+      "authMethod": "请填写认证方式。"
+    }
+  },
+  "validation": {
+    "title": "Manifest 校验",
+    "ready": "可提交",
+    "needsFixes": "需要修正",
+    "ok": "Manifest 结构符合当前审计沙箱要求。",
+    "stakeTooLow": "质押金额必须覆盖 serviceFee + minimumBond。",
+    "stakeInvalid": "质押金额覆盖值必须是有效 ETH 数额。",
+    "fixManifest": "请先修正 Manifest 校验错误。",
+    "fixProfile": "请先补齐公开 README / 市场展示资料。",
+    "agentName": "agent_name 必须符合 ^[a-zA-Z0-9_-]{1,64}$。",
+    "image": "image 必须是非空 Docker 镜像地址。",
+    "allowedHostsRequired": "allowed_hosts 至少需要包含一个公网主机。",
+    "allowedHostsWildcard": "allowed_hosts 不能包含通配符。",
+    "allowedHostsPrivate": "allowed_hosts 不能包含内网、回环或宿主机地址。",
+    "allowedHostsInvalid": "allowed_hosts 中存在无效主机。",
+    "allowedHostsPath": "allowed_hosts 应填写主机名，不应包含路径或完整 URL。",
+    "rpcRequired": "allowed_rpc_endpoints 至少需要包含一个 http(s) 端点。",
+    "rpcInvalid": "allowed_rpc_endpoints 中存在无效 URL。",
+    "rpcProtocol": "allowed_rpc_endpoints 必须使用 http 或 https。",
+    "rpcPrivate": "allowed_rpc_endpoints 不能包含内网或回环地址。",
+    "manifestUrlInvalid": "manifestUrl 必须是有效的公开 http(s) URL。",
+    "manifestUrlProtocol": "manifestUrl 必须使用 http 或 https，审计监听器才能拉取。"
+  },
+  "wallet": {
+    "title": "钱包与质押",
+    "wallet": "钱包",
+    "chain": "链 ID",
+    "serviceFee": "服务费",
+    "minimumBond": "最低保证金",
+    "minimumNote": "当前默认保证金已设为最小测试单位；主网或真实资金流上线前应改为风险分级保证金。",
+    "notConnected": "未连接",
+    "unavailable": "钱包不可用",
+    "disconnected": "未连接",
+    "error": "连接出错",
+    "loading": "加载中",
+    "connect": "连接钱包",
+    "connecting": "连接中",
+    "switchChain": "切换到链 {{chainId}}",
+    "stake": "质押并请求审计",
+    "submitting": "正在提交质押",
+    "pricingError": "无法读取 registry 费用。",
+    "pricingMissing": "Registry 费用尚未加载。",
+    "walletError": "钱包连接不可用或已被拒绝。",
+    "unknownChain": "未知",
+    "chainMismatch": "钱包当前在链 {{current}}，需要链 {{expected}}。",
+    "switchError": "无法切换链。",
+    "txFailed": "质押交易失败。"
+  },
+  "success": {
+    "title": "Pending 审计已创建",
+    "tx": "交易",
+    "openToken": "打开 token #{{tokenId}}"
+  },
+  "preview": {
+    "title": "提交资料预览",
+    "description": "公开 README 与技术提交材料分开展示，后续可分别进入市场详情页和审计系统。",
+    "readme": "公开 README",
+    "manifest": "审计 Manifest",
+    "hosted": "托管接入",
+    "open": "打开 Manifest URL"
+  }
+}
