@@ -47,7 +47,7 @@ export function ComparePage({ config }: { config: AppConfig }): JSX.Element {
   function tdClass(key: CompareAttributeKey): string {
     return cn(
       "p-4 align-top transition-colors",
-      diffs[key] ? "bg-foreground/[0.03] text-foreground" : "text-muted-foreground/80"
+      diffs[key] ? "text-foreground" : "text-muted-foreground/90"
     );
   }
 
