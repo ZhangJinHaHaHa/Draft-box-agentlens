@@ -5,8 +5,38 @@
     "limit": "最多对比 4 个 Agent。",
     "open": "开始对比"
   },
+  "narrative": {
+    "title": "一句话怎么选"
+  },
   "page": {
     "title": "对比 Agent",
-    "subtitle": "本页面会在阶段二上线，目前先用临时占位。"
+    "subtitle": "通过各项指标选择最适合的 Agent",
+    "empty": "未选择 Agent",
+    "emptyDesc": "请至少选择 2 个 Agent 进行对比",
+    "clear": "清空对比",
+    "back": "返回目录",
+    "limit": "仅展示前 4 个 Agent；请从 URL 或对比清单中移除多余项。",
+    "conclusion": "对比结论",
+    "winner": "推荐选择",
+    "rules": {
+      "try-first": "尝试首选：综合风险、复杂度和信任等级最佳",
+      "formal-integration": "正式集成：能力强大但存在一定复杂度或无入门指南",
+      "avoid-for-now": "暂缓使用：所有选项均存在高风险或缺乏信任证据",
+      "manual-judgment": "需要人工判断：指标相近，建议根据具体场景自行判断"
+    },
+    "attrs": {
+      "scenario": "适用场景",
+      "unsuitableScenario": "不适用场景",
+      "seller": "背后卖家",
+      "complexity": "接入复杂度",
+      "riskLevel": "风险等级",
+      "trustTier": "信任等级",
+      "onboarding": "入门指南",
+      "auditEvidence": "审计证据",
+      "pricing": "定价信息",
+      "officialRoute": "官方入口"
+    },
+    "has": "有",
+    "none": "无"
   }
 }

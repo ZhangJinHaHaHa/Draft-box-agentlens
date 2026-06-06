@@ -1,52 +1,99 @@
 import * as React from "react";
 
-type Theme = "light" | "dark";
+export type ThemeMode = "light" | "dark";
+export const ART_THEMES = ["swiss", "atelier", "nocturne", "pixel", "crimson"] as const;
+export type ArtTheme = (typeof ART_THEMES)[number];
+export const DEFAULT_ART_THEME: ArtTheme = "swiss";
+export const ART_THEME_DEFAULT_VERSION = "swiss-precision-20260606-v3";
 
-const STORAGE_KEY = "agentlens-theme";
+const STORAGE_MODE_KEY = "agentlens-theme-mode";
+const STORAGE_ART_KEY = "agentlens-art-theme";
+const STORAGE_ART_DEFAULT_VERSION_KEY = "agentlens-art-theme-default-version";
+const LEGACY_ART_THEME_MAP: Record<string, ArtTheme> = {
+  aqua: "atelier",
+  flora: "atelier",
+  sierra: "nocturne",
+  vangogh: "nocturne",
+  monet: "atelier",
+  klimt: "atelier"
+};
+
+const ART_THEME_DEFAULT_MODE: Record<ArtTheme, ThemeMode> = {
+  swiss: "light",
+  atelier: "light",
+  nocturne: "dark",
+  pixel: "dark",
+  crimson: "light"
+};
 
 interface ThemeContextValue {
-  theme: Theme;
-  setTheme: (next: Theme) => void;
+  theme: ThemeMode;
+  artTheme: ArtTheme;
+  setTheme: (next: ThemeMode) => void;
+  setArtTheme: (next: ArtTheme) => void;
   toggleTheme: () => void;
 }
 
 const ThemeContext = React.createContext<ThemeContextValue | undefined>(undefined);
 
-function readInitialTheme(): Theme {
-  if (typeof window === "undefined") {
-    return "light";
-  }
-
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === "light" || stored === "dark") {
-    return stored;
-  }
-
+function readInitialMode(): ThemeMode {
+  if (typeof window === "undefined") return "light";
+  const stored = window.localStorage.getItem(STORAGE_MODE_KEY);
+  if (stored === "light" || stored === "dark") return stored;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-function applyTheme(theme: Theme): void {
-  if (typeof document === "undefined") {
-    return;
+export function normalizeArtTheme(value: string | null | undefined): ArtTheme {
+  if (value && ART_THEMES.includes(value as ArtTheme)) return value as ArtTheme;
+  if (value && LEGACY_ART_THEME_MAP[value]) return LEGACY_ART_THEME_MAP[value];
+  return DEFAULT_ART_THEME;
+}
+
+export function resolveInitialArtTheme(
+  storedArtTheme: string | null | undefined,
+  storedDefaultVersion: string | null | undefined
+): ArtTheme {
+  if (storedDefaultVersion !== ART_THEME_DEFAULT_VERSION) {
+    return DEFAULT_ART_THEME;
   }
+  return normalizeArtTheme(storedArtTheme);
+}
+
+function readInitialArt(): ArtTheme {
+  if (typeof window === "undefined") return DEFAULT_ART_THEME;
+  const stored = window.localStorage.getItem(STORAGE_ART_KEY);
+  const storedDefaultVersion = window.localStorage.getItem(STORAGE_ART_DEFAULT_VERSION_KEY);
+  return resolveInitialArtTheme(stored, storedDefaultVersion);
+}
+
+function applyTheme(mode: ThemeMode, art: ArtTheme): void {
+  if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.classList.remove(theme === "dark" ? "light" : "dark");
-  root.classList.add(theme);
-  root.style.colorScheme = theme;
+
+  root.classList.remove("light", "dark");
+  root.classList.add(mode);
+
+  root.setAttribute("data-theme", art);
+  root.style.colorScheme = mode;
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }): JSX.Element {
-  const [theme, setThemeState] = React.useState<Theme>(() => readInitialTheme());
+  const [theme, setThemeState] = React.useState<ThemeMode>(() => readInitialMode());
+  const [artTheme, setArtThemeState] = React.useState<ArtTheme>(() => readInitialArt());
 
   React.useEffect(() => {
-    applyTheme(theme);
+    applyTheme(theme, artTheme);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, theme);
+      window.localStorage.setItem(STORAGE_MODE_KEY, theme);
+      window.localStorage.setItem(STORAGE_ART_KEY, artTheme);
+      window.localStorage.setItem(STORAGE_ART_DEFAULT_VERSION_KEY, ART_THEME_DEFAULT_VERSION);
     }
-  }, [theme]);
+  }, [theme, artTheme]);
 
-  const setTheme = React.useCallback((next: Theme) => {
-    setThemeState(next);
+  const setTheme = React.useCallback((next: ThemeMode) => setThemeState(next), []);
+  const setArtTheme = React.useCallback((next: ArtTheme) => {
+    setArtThemeState(next);
+    setThemeState(ART_THEME_DEFAULT_MODE[next]);
   }, []);
 
   const toggleTheme = React.useCallback(() => {
@@ -54,8 +101,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): JSX.
   }, []);
 
   const value = React.useMemo<ThemeContextValue>(
-    () => ({ theme, setTheme, toggleTheme }),
-    [setTheme, theme, toggleTheme]
+    () => ({ theme, artTheme, setTheme, setArtTheme, toggleTheme }),
+    [theme, artTheme, setTheme, setArtTheme, toggleTheme]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

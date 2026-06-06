@@ -12,7 +12,7 @@ const buttonVariants = cva(
         default:
           "bg-foreground text-background hover:bg-foreground/90",
         secondary:
-          "border border-border bg-background text-foreground hover:bg-muted",
+          "glass-input border text-foreground hover:bg-muted/70",
         outline:
           "border border-border bg-transparent text-foreground hover:bg-muted",
         ghost: "text-foreground hover:bg-muted",
@@ -43,10 +43,14 @@ export interface ButtonProps
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
+    const resolvedVariant = variant ?? "default";
+    const resolvedSize = size ?? "default";
     return (
       <Comp
         ref={ref}
-        className={cn(buttonVariants({ variant, size }), className)}
+        className={cn(buttonVariants({ variant: resolvedVariant, size: resolvedSize }), "theme-button", className)}
+        data-variant={resolvedVariant}
+        data-size={resolvedSize}
         {...props}
       />
     );

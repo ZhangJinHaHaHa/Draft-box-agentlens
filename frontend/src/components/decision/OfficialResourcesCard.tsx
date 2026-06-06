@@ -57,7 +57,7 @@ export function OfficialResourcesCard({ entry }: OfficialResourcesCardProps): JS
               target="_blank"
               rel="noreferrer"
               className={cn(
-                "group flex items-center justify-between gap-3 rounded-md border border-border bg-card px-4 py-3 text-sm",
+                "group glass-input flex items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm",
                 "hover:border-foreground/40"
               )}
             >

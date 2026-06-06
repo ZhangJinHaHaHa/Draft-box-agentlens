@@ -7,6 +7,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/i18n/useLocale";
 import { truncateAddress } from "@/lib/format";
+import { useCompareSelection } from "@/hooks/useCompareSelection";
 
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Logo } from "./Logo";
@@ -23,9 +24,10 @@ export function NavHeader(): JSX.Element {
   const { t } = useTranslation("common");
   const { buildPath } = useLocale();
   const wallet = useWallet();
+  const { ids, compareHref } = useCompareSelection();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="glass-nav sticky top-0 z-40 w-full border-b">
       <div className="container-page flex h-14 items-center justify-between gap-4">
         <div className="flex items-center gap-8">
           <Logo />
@@ -33,7 +35,7 @@ export function NavHeader(): JSX.Element {
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.key}
-                to={buildPath(item.to)}
+                to={buildPath(item.key === "compare" ? compareHref : item.to)}
                 className={({ isActive }) =>
                   cn(
                     "rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground",
@@ -42,6 +44,7 @@ export function NavHeader(): JSX.Element {
                 }
               >
                 {t(`nav.${item.key}`)}
+                {item.key === "compare" && ids.length > 0 ? ` (${ids.length})` : ""}
               </NavLink>
             ))}
           </nav>

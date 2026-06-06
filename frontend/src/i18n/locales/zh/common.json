@@ -31,13 +31,22 @@
   "theme": {
     "label": "主题",
     "light": "浅色",
-    "dark": "深色"
+    "dark": "深色",
+    "artLabel": "背景风格",
+    "art": {
+      "swiss": "Swiss Precision",
+      "atelier": "Artisanal Professional",
+      "nocturne": "Post-Impressionist Modern",
+      "pixel": "Bit-Perfect Retro",
+      "crimson": "Crimson Trust & Parchment"
+    }
   },
   "wallet": {
     "label": "钱包",
     "connecting": "连接中"
   },
   "agentSource": {
+    "marketplace": "专家挂单",
     "curated": "重点维护",
     "listed": "已收录",
     "native": "平台原生"
@@ -53,12 +62,12 @@
     "high": "上手复杂"
   },
   "access": {
-    "api": "API",
-    "saas": "SaaS",
-    "cli": "CLI",
-    "browser_ext": "浏览器扩展",
-    "local": "本地部署",
-    "cloud": "云端服务"
+    "api": "接口接入",
+    "saas": "网页直接用",
+    "cli": "命令行",
+    "browser_ext": "浏览器插件",
+    "local": "装在你自己设备",
+    "cloud": "在对方云端跑"
   },
   "status": {
     "loading": "加载中…",

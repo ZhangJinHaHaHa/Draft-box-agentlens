@@ -4,8 +4,10 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 import { searchForWorkspaceRoot } from "vite";
 
+import { createLlmNeedProxyPlugin } from "./scripts/llmNeedProxy.mjs";
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), createLlmNeedProxyPlugin()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src")

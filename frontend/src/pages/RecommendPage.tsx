@@ -267,11 +267,11 @@ export function RecommendPage({ config }: RecommendPageProps): JSX.Element {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex flex-col gap-1">
                     <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      #{index + 1} · {Math.round(result.score)}
+                      #{index + 1} - {Math.round(result.score)}
                     </span>
                     <h2 className="text-xl font-medium tracking-tight">{entry.name}</h2>
                     <p className="text-sm text-muted-foreground">
-                      {[entry.vendor, entry.category].filter(Boolean).join(" · ")}
+                      {[entry.vendor, entry.category].filter(Boolean).join(" - ")}
                     </p>
                   </div>
                   <Button asChild variant="ghost" size="sm">

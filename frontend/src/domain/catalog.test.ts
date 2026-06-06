@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { curatedAgents } from "@/data/catalog/curated";
 import { listedAgents } from "@/data/catalog/listed";
+import { marketplaceAgents } from "@/data/catalog/marketplace";
 import { listOnboardingGuides } from "@/data/catalog/onboarding";
 import { mergeCatalog, type AgentCatalogEntry } from "./catalog";
 import { computeTrustTier } from "./trustTier";
@@ -87,5 +88,42 @@ describe("curated/listed/native catalog", () => {
       const tier = computeTrustTier({ entry }).tier;
       expect(tier).toBe(0);
     }
+  });
+});
+
+describe("marketplace tier in the merged catalog", () => {
+  it("surfaces marketplace agents first, ahead of curated/listed/native", () => {
+    const merged = mergeCatalog({
+      curated: curatedAgents,
+      listed: listedAgents,
+      marketplace: marketplaceAgents,
+      native: fakeNative
+    });
+    const firstMarketplace = merged.entries.findIndex((e) => e.source === "marketplace");
+    const firstCurated = merged.entries.findIndex((e) => e.source === "curated");
+    expect(firstMarketplace).toBe(0);
+    expect(firstMarketplace).toBeLessThan(firstCurated);
+    expect(merged.bySource.marketplace.length).toBe(marketplaceAgents.length);
+  });
+
+  it("keeps every marketplace entry resolvable by id", () => {
+    const merged = mergeCatalog({
+      curated: curatedAgents,
+      listed: listedAgents,
+      marketplace: marketplaceAgents,
+      native: []
+    });
+    for (const entry of marketplaceAgents) {
+      expect(merged.byId.get(entry.id)?.source, entry.id).toBe("marketplace");
+    }
+  });
+
+  it("stays backward compatible when marketplace is omitted", () => {
+    const merged = mergeCatalog({
+      curated: curatedAgents,
+      listed: listedAgents,
+      native: []
+    });
+    expect(merged.bySource.marketplace).toEqual([]);
   });
 });

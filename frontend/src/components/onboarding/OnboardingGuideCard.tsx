@@ -1,6 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocale } from "@/i18n/useLocale";
@@ -17,6 +18,11 @@ interface OnboardingGuideCardProps {
 export function OnboardingGuideCard({ entry }: OnboardingGuideCardProps): JSX.Element {
   const { t } = useTranslation("detail");
   const guide = getOnboardingGuide(entry.id);
+  const officialLinks = [
+    entry.officialUrl ? { label: t("official.homepage"), url: entry.officialUrl } : null,
+    entry.docsUrl ? { label: t("official.docs"), url: entry.docsUrl } : null,
+    entry.pricingUrl ? { label: t("official.pricing"), url: entry.pricingUrl } : null
+  ].filter((item): item is { label: string; url: string } => item !== null);
 
   return (
     <Card>
@@ -27,7 +33,21 @@ export function OnboardingGuideCard({ entry }: OnboardingGuideCardProps): JSX.El
         {guide ? (
           <OnboardingTabs guide={guide} />
         ) : (
-          <p className="text-sm text-muted-foreground">{t("onboarding.missing")}</p>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">{t("onboarding.missing")}</p>
+            {officialLinks.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {officialLinks.map((link) => (
+                  <Button key={link.url} asChild variant="secondary" size="sm">
+                    <a href={link.url} target="_blank" rel="noreferrer">
+                      {link.label}
+                      <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+                    </a>
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -98,7 +118,7 @@ function OnboardingTabs({ guide }: { guide: OnboardingGuide }): JSX.Element {
                   target="_blank"
                   rel="noreferrer"
                   className={cn(
-                    "group flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm",
+                    "group glass-input flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm",
                     "hover:border-foreground/40"
                   )}
                 >

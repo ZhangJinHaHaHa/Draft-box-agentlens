@@ -5,9 +5,12 @@ import { NavHeader } from "./NavHeader";
 
 export function AppLayout(): JSX.Element {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="relative isolate flex min-h-screen flex-col text-foreground">
+      <div className="art-backdrop" aria-hidden="true" />
+      <div className="art-backdrop-glass" aria-hidden="true" />
+
       <NavHeader />
-      <main className="flex-1">
+      <main className="flex-1 relative z-10">
         <Outlet />
       </main>
       <Footer />

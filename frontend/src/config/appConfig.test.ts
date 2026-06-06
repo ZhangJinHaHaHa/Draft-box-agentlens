@@ -67,6 +67,27 @@ describe("readAppConfig", () => {
     });
   });
 
+  it("returns the A-line recommendation and rental URLs when configured", () => {
+    expect(
+      readAppConfig({
+        VITE_AUDIT_RPC_URL: "https://rpc.edge.local",
+        VITE_AUDIT_REGISTRY_ADDRESS: "0x1111111111111111111111111111111111111111",
+        VITE_AUDIT_CHAIN_ID: "31337",
+        VITE_RECOMMENDATION_API_URL: "https://api.example.com/recommend",
+        VITE_RENTAL_WEB2_URL: "https://orders.example.com/apply"
+      })
+    ).toEqual({
+      ok: true,
+      config: {
+        rpcUrl: "https://rpc.edge.local",
+        registryAddress: "0x1111111111111111111111111111111111111111",
+        chainId: 31337,
+        recommendationApiUrl: "https://api.example.com/recommend",
+        rentalWeb2Url: "https://orders.example.com/apply"
+      }
+    });
+  });
+
   it("returns optional marketplace, review, and ZK verifier addresses", () => {
     expect(
       readAppConfig({

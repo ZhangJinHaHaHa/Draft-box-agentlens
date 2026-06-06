@@ -5,11 +5,14 @@
     "subtitle": "We turn 50+ agents into comparable facts — scenarios, risks, getting-started cost, verifiable trust. No ads, no five-star roulette.",
     "searchPlaceholder": "Try: support automation, DeFi strategy, IDE copilot…",
     "primaryCta": "Browse all agents",
+    "parsingCta": "Parsing need",
+    "llmUnavailable": "LLM parsing is unavailable. Configure local MiniMax and try again.",
+    "llmDemoNotice": "LLM parsing, local demo; final matching is still decided by the AgentLens catalog filters.",
     "secondaryCta": "Describe what you need"
   },
   "scenarios": {
     "title": "Start from the job you have",
-    "subtitle": "Eight real scenarios mapped to candidates we've already vetted.",
+    "subtitle": "Real scenarios mapped to candidates we've already vetted.",
     "items": {
       "defi": "DeFi trading",
       "support": "Customer support",

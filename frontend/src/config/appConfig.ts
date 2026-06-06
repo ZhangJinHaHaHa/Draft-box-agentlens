@@ -22,6 +22,7 @@ export interface AppConfig {
   reviewRegistryAddress?: string;
   zkVerifierAddress?: string;
   hostedAgentApiUrl?: string;
+  rentalWeb2Url?: string;
 }
 
 export type AppConfigResult =
@@ -51,6 +52,8 @@ export interface AppEnv {
   VITE_AUDIT_REVIEW_REGISTRY_ADDRESS?: string;
   VITE_AUDIT_ZK_VERIFIER_ADDRESS?: string;
   VITE_HOSTED_AGENT_API_URL?: string;
+  VITE_RECOMMENDATION_API_URL?: string;
+  VITE_RENTAL_WEB2_URL?: string;
 }
 
 export function readAppConfig(env: AppEnv): AppConfigResult {
@@ -86,6 +89,9 @@ export function readAppConfig(env: AppEnv): AppConfigResult {
       : rpcUrl;
 
   const attestation = readAttestationConfigFromEnv(env);
+  const recommendationApiUrl =
+    readOptionalEnvString(env.VITE_PLATFORM_RECOMMENDATION_API_URL) ??
+    readOptionalEnvString(env.VITE_RECOMMENDATION_API_URL);
 
   return {
     ok: true,
@@ -99,8 +105,8 @@ export function readAppConfig(env: AppEnv): AppConfigResult {
       ...(readOptionalEnvString(env.VITE_AUDIT_APPEAL_API_URL)
         ? { appealApiUrl: readOptionalEnvString(env.VITE_AUDIT_APPEAL_API_URL) }
         : {}),
-      ...(readOptionalEnvString(env.VITE_PLATFORM_RECOMMENDATION_API_URL)
-        ? { recommendationApiUrl: readOptionalEnvString(env.VITE_PLATFORM_RECOMMENDATION_API_URL) }
+      ...(recommendationApiUrl
+        ? { recommendationApiUrl }
         : {}),
       ...(readOptionalEnvString(env.VITE_PLATFORM_API_URL)
         ? { platformApiUrl: readOptionalEnvString(env.VITE_PLATFORM_API_URL) }
@@ -117,6 +123,9 @@ export function readAppConfig(env: AppEnv): AppConfigResult {
         : {}),
       ...(readOptionalEnvString(env.VITE_HOSTED_AGENT_API_URL)
         ? { hostedAgentApiUrl: readOptionalEnvString(env.VITE_HOSTED_AGENT_API_URL) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_RENTAL_WEB2_URL)
+        ? { rentalWeb2Url: readOptionalEnvString(env.VITE_RENTAL_WEB2_URL) }
         : {})
     }
   };
