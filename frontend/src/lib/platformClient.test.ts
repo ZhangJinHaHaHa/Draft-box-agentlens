@@ -2,14 +2,22 @@ import { describe, expect, it } from "vitest";
 
 import {
   createMockGoogleUser,
+  createPlatformDeveloper,
+  createPlatformRefund,
   createPlatformOrder,
+  getAgentReputation,
   getAccessBridge,
   getPlatformAdminInspect,
   getPlatformCredits,
   getPlatformOrder,
+  getPlatformSettlement,
+  linkPlatformAgentDeveloper,
   migrateWallet,
+  resolvePlatformRefund,
   requestWalletExport,
   requestPaidLlmRecommendation,
+  startPlatformRefundReview,
+  submitUsageReview,
   submitMockPaymentCallback
 } from "./platformClient";
 
@@ -233,6 +241,275 @@ describe("platformClient", () => {
     expect(payment.order.chainGrantStatus).toBe("pending_chain_grant");
     expect(payment.bridge.expectedGrantFunction).toBe("grantRentalAccess");
     expect(lookup.accessBridge?.bridgeId).toBe("access-bridge-1");
+  });
+
+  it("runs local MVP-3 lifecycle helpers for settlement, reputation, review, and refund", async () => {
+    const developer = await createPlatformDeveloper(
+      "https://platform.example",
+      {
+        displayName: "Cursor Demo Provider",
+        walletAddress: "0x3333333333333333333333333333333333333333",
+        trustStatus: "verified",
+        trustScore: 82
+      },
+      async (url, init) => {
+        expect(url).toBe("https://platform.example/api/developers");
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            developer: {
+              developerId: "developer-1",
+              displayName: "Cursor Demo Provider",
+              walletAddress: "0x3333333333333333333333333333333333333333",
+              trustStatus: "verified",
+              trustScore: 82,
+              createdAt: "2026-06-05T00:00:00.000Z",
+              updatedAt: "2026-06-05T00:00:00.000Z"
+            }
+          }),
+          { status: 201 }
+        );
+      }
+    );
+    const link = await linkPlatformAgentDeveloper(
+      "https://platform.example",
+      "developer-1",
+      "cursor",
+      async (url, init) => {
+        expect(url).toBe("https://platform.example/api/developers/developer-1/agents");
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            link: {
+              agentId: "cursor",
+              developerId: "developer-1",
+              linkedAt: "2026-06-05T00:00:00.000Z"
+            }
+          }),
+          { status: 201 }
+        );
+      }
+    );
+    const settlement = await getPlatformSettlement(
+      "https://platform.example",
+      "order-1",
+      async (url) => {
+        expect(url).toBe("https://platform.example/api/settlements/orders/order-1");
+        return new Response(
+          JSON.stringify({
+            settlement: {
+              settlementId: "settlement-1",
+              orderId: "order-1",
+              agentId: "cursor",
+              developerId: "developer-1",
+              grossAmount: "20.00",
+              currency: "CREDITS",
+              platformFeeAmount: "4.00",
+              developerShareAmount: "16.00",
+              holdbackAmount: "1.60",
+              payableAmount: "14.40",
+              status: "pending_holdback",
+              updatedAt: "2026-06-05T00:01:00.000Z"
+            }
+          }),
+          { status: 200 }
+        );
+      }
+    );
+    const reputation = await getAgentReputation(
+      "https://platform.example",
+      "cursor",
+      async (url) => {
+        expect(url).toBe("https://platform.example/api/reputation/agents/cursor");
+        return new Response(
+          JSON.stringify({
+            reputation: {
+              subjectType: "agent",
+              subjectId: "cursor",
+              score: 91,
+              tier: "high",
+              source: "local-farr-adapter",
+              updatedAt: "2026-06-05T00:01:00.000Z",
+              signals: {
+                paidOrders: 1,
+                gatewayLeasesIssued: 1,
+                pendingChainGrants: 1,
+                refunds: 0,
+                severeRefunds: 0,
+                reviewCount: 0,
+                averageRating: null,
+                platformRating: null,
+                capabilityMismatchReports: 0,
+                safetyIncidentReports: 0,
+                developerTrustScore: 82
+              }
+            }
+          }),
+          { status: 200 }
+        );
+      }
+    );
+    const review = await submitUsageReview(
+      "https://platform.example",
+      {
+        orderId: "order-1",
+        userId: "web2-user-1",
+        overallRating: 5,
+        dimensionRatings: {
+          security: 2,
+          taskExecution: 2,
+          cognitive: 2,
+          environment: 1,
+          engineering: 2,
+          compliance: 2
+        },
+        capabilityMatched: true,
+        safetyIncidentReported: false,
+        commentText: "Matched the demo workflow."
+      },
+      async (url, init) => {
+        expect(url).toBe("https://platform.example/api/reviews");
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            review: {
+              reviewId: "usage-review-1",
+              orderId: "order-1",
+              userId: "web2-user-1",
+              agentId: "cursor",
+              overallRating: 5,
+              dimensionRatings: {
+                security: 2,
+                taskExecution: 2,
+                cognitive: 2,
+                environment: 1,
+                engineering: 2,
+                compliance: 2
+              },
+              capabilityMatched: true,
+              safetyIncidentReported: false,
+              commentText: "Matched the demo workflow.",
+              commentHash: "0x1111111111111111111111111111111111111111111111111111111111111111",
+              createdAt: "2026-06-05T00:02:00.000Z"
+            },
+            summary: {
+              agentId: "cursor",
+              reviewCount: 1,
+              averageRating: 5,
+              platformRating: 100,
+              capabilityMismatchReports: 0,
+              safetyIncidentReports: 0
+            },
+            reputation: {
+              subjectType: "agent",
+              subjectId: "cursor",
+              score: 99,
+              tier: "high",
+              source: "local-farr-adapter",
+              updatedAt: "2026-06-05T00:02:00.000Z",
+              signals: {
+                paidOrders: 1,
+                gatewayLeasesIssued: 1,
+                pendingChainGrants: 1,
+                refunds: 0,
+                severeRefunds: 0,
+                reviewCount: 1,
+                averageRating: 5,
+                platformRating: 100,
+                capabilityMismatchReports: 0,
+                safetyIncidentReports: 0,
+                developerTrustScore: 82
+              }
+            }
+          }),
+          { status: 201 }
+        );
+      }
+    );
+    const createdRefund = await createPlatformRefund(
+      "https://platform.example",
+      {
+        orderId: "order-1",
+        category: "core_capability_failure",
+        expectedCapability: "Complete the promised workflow.",
+        actualFailure: "Partial failure in demo evidence."
+      },
+      async (url, init) => {
+        expect(url).toBe("https://platform.example/api/refunds");
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            refund: {
+              refundId: "refund-1",
+              orderId: "order-1",
+              userId: "web2-user-1",
+              agentId: "cursor",
+              category: "core_capability_failure",
+              status: "requested",
+              eligibility: "review_required",
+              requestedAt: "2026-06-05T00:03:00.000Z",
+              updatedAt: "2026-06-05T00:03:00.000Z"
+            }
+          }),
+          { status: 201 }
+        );
+      }
+    );
+    await startPlatformRefundReview(
+      "https://platform.example",
+      "refund-1",
+      "ops-1",
+      async (url, init) => {
+        expect(url).toBe("https://platform.example/api/refunds/refund-1/review");
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            refund: {
+              ...createdRefund,
+              status: "under_review",
+              reviewerId: "ops-1",
+              updatedAt: "2026-06-05T00:04:00.000Z"
+            }
+          }),
+          { status: 200 }
+        );
+      }
+    );
+    const resolvedRefund = await resolvePlatformRefund(
+      "https://platform.example",
+      "refund-1",
+      {
+        outcome: "partial_refund",
+        reviewNote: "Partial refund approved.",
+        refundAmount: "6.00"
+      },
+      async (url, init) => {
+        expect(url).toBe("https://platform.example/api/refunds/refund-1/resolve");
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            refund: {
+              ...createdRefund,
+              status: "partial_refund",
+              reviewerId: "ops-1",
+              reviewNote: "Partial refund approved.",
+              refundAmount: "6.00",
+              resolvedAt: "2026-06-05T00:05:00.000Z",
+              updatedAt: "2026-06-05T00:05:00.000Z"
+            }
+          }),
+          { status: 200 }
+        );
+      }
+    );
+
+    expect(developer.trustScore).toBe(82);
+    expect(link.agentId).toBe("cursor");
+    expect(settlement.payableAmount).toBe("14.40");
+    expect(reputation.signals.pendingChainGrants).toBe(1);
+    expect(review.summary.platformRating).toBe(100);
+    expect(resolvedRefund.status).toBe("partial_refund");
+    expect(resolvedRefund.refundAmount).toBe("6.00");
   });
 
   it("requests wallet export without private key material and migrates wallet", async () => {
