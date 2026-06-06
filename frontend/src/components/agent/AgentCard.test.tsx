@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
@@ -35,8 +35,8 @@ function makeEntry(source: AgentSource, id: string, name: string): AgentCatalogE
   };
 }
 
-function renderInLocale(entry: AgentCatalogEntry, locale: "zh" | "en"): void {
-  void i18n.changeLanguage(locale);
+async function renderInLocale(entry: AgentCatalogEntry, locale: "zh" | "en"): Promise<void> {
+  await i18n.changeLanguage(locale);
   render(
     <I18nextProvider i18n={i18n}>
       <TooltipProvider>
@@ -55,17 +55,17 @@ describe("AgentCard", () => {
     ["curated", "重点维护", "Curated"],
     ["listed", "已收录", "Listed"],
     ["native", "平台原生", "Platform native"]
-  ] as const)("renders %s entries with intro + chips in zh and en", (source, zhLabel, enLabel) => {
+  ] as const)("renders %s entries with intro + chips in zh and en", async (source, zhLabel, enLabel) => {
     const entry = makeEntry(source, source, `${source}-agent`);
 
-    renderInLocale(entry, "zh");
+    await renderInLocale(entry, "zh");
     expect(screen.getByRole("heading", { name: `${source}-agent` })).toBeInTheDocument();
     expect(screen.getByText(`中文介绍 ${source}-agent`)).toBeInTheDocument();
     expect(screen.getByText(zhLabel)).toBeInTheDocument();
 
-    document.body.innerHTML = "";
+    cleanup();
 
-    renderInLocale(entry, "en");
+    await renderInLocale(entry, "en");
     expect(screen.getByRole("heading", { name: `${source}-agent` })).toBeInTheDocument();
     expect(screen.getByText(`English intro ${source}-agent`)).toBeInTheDocument();
     expect(screen.getByText(enLabel)).toBeInTheDocument();

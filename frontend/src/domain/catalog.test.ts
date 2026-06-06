@@ -50,8 +50,8 @@ describe("curated/listed/native catalog", () => {
     expect(curatedAgents.length).toBeGreaterThanOrEqual(10);
   });
 
-  it("ships at least 15 listed agents", () => {
-    expect(listedAgents.length).toBeGreaterThanOrEqual(15);
+  it("ships at least 25 listed agents", () => {
+    expect(listedAgents.length).toBeGreaterThanOrEqual(25);
   });
 
   it("every curated agent has a matching onboarding guide", () => {
