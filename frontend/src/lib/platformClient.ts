@@ -59,6 +59,7 @@ export interface PaidLlmRecommendationResponse {
   engine: string;
   charged: boolean;
   fallbackUsed: boolean;
+  fallbackReason?: string;
   costCredits: number;
   creditAccount: PlatformCreditAccount;
   recommendation: RecommendationApiResponse;
@@ -206,6 +207,7 @@ function parsePaidLlmRecommendationResponse(payload: unknown): PaidLlmRecommenda
     engine: record.engine,
     charged: record.charged,
     fallbackUsed: record.fallbackUsed,
+    ...(typeof record.fallbackReason === "string" ? { fallbackReason: record.fallbackReason } : {}),
     costCredits: record.costCredits,
     creditAccount: parseCreditAccount(record.creditAccount),
     recommendation: parseRecommendationApiResponse(record.recommendation)

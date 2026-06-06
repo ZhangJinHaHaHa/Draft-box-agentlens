@@ -494,6 +494,7 @@ async function createChargedLlmRecommendation(
   engine: RecommendationEngine;
   charged: boolean;
   fallbackUsed: boolean;
+  fallbackReason?: string;
   costCredits: number;
   creditAccount: ReturnType<InMemoryPlatformApiStore["getCreditAccount"]>;
   creditTransaction?: ReturnType<InMemoryPlatformApiStore["spendPlatformCredits"]>["transaction"];
@@ -523,16 +524,24 @@ async function createChargedLlmRecommendation(
       creditTransaction: charge.transaction,
       recommendation
     };
-  } catch {
+  } catch (error) {
     return {
       engine: "rules-fallback",
       charged: false,
       fallbackUsed: true,
+      fallbackReason: formatRecommendationFallbackReason(error),
       costCredits: dependencies.costCredits,
       creditAccount: store.getCreditAccount(userId),
       recommendation: baseline
     };
   }
+}
+
+function formatRecommendationFallbackReason(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message.slice(0, 300);
+  }
+  return "Recommendation LLM failed.";
 }
 
 async function readJsonObject(request: PlatformRequestLike): Promise<Record<string, unknown>> {

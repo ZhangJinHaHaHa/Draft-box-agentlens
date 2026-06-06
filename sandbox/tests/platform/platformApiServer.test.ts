@@ -456,6 +456,44 @@ test("platform API charges credits for mock LLM recommendations", async () => {
   );
 });
 
+test("platform API exposes fallback reason without charging credits when LLM fails", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const dependencies: PlatformApiRecommendationDependencies = {
+    catalog: defaultRecommendationCatalog,
+    llmClient: {
+      engine: "openai",
+      async recommend() {
+        throw new Error("synthetic LLM failure");
+      }
+    },
+    costCredits: 3
+  };
+  const user = await createGoogleUser(store);
+
+  const response = await callApi(
+    store,
+    "POST",
+    "/api/recommendations/llm",
+    {
+      userId: user.platformUserId,
+      query: "自托管 RAG 知识库 API",
+      limit: 2
+    },
+    dependencies
+  );
+
+  const creditAccount = response.body.creditAccount as Record<string, unknown>;
+  const recommendation = response.body.recommendation as Record<string, unknown>;
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.engine, "rules-fallback");
+  assert.equal(response.body.charged, false);
+  assert.equal(response.body.fallbackUsed, true);
+  assert.match(response.body.fallbackReason as string, /synthetic LLM failure/);
+  assert.equal(creditAccount.balance, 100);
+  assert.ok((recommendation.results as unknown[]).length > 0);
+});
+
 test("platform API rejects LLM recommendations when credits are insufficient", async () => {
   const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z", 2);
   const dependencies: PlatformApiRecommendationDependencies = {
