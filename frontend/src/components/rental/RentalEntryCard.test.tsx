@@ -46,6 +46,7 @@ describe("RentalEntryCard", () => {
     renderCard();
 
     expect(screen.getByRole("heading", { name: /Rental entry/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Rental entry/i }).closest("#rental-lifecycle")).not.toBeNull();
     expect(screen.getByRole("button", { name: /Create local rental/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /On-chain rental/i })).toBeDisabled();
     expect(screen.getByText(/Platform API is not configured/i)).toBeInTheDocument();

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Check, X, ShieldAlert, ShieldCheck, CheckCircle2, Server, Trash2 } from "lucide-react";
+import { Check, CreditCard, X, ShieldAlert, ShieldCheck, CheckCircle2, Server, Trash2 } from "lucide-react";
 
 import { PageHeading } from "@/components/layout/PageHeading";
 import { Button } from "@/components/ui/button";
@@ -272,6 +272,19 @@ export function ComparePage({ config }: { config: AppConfig }): JSX.Element {
               {agents.map((agent) => (
                 <td key={agent.id} className={tdClass("pricing")}>
                   {agent.pricingHint ? pickText(agent.pricingHint, locale) : <span className="text-muted-foreground">-</span>}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.rentalLifecycle")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className="p-4 align-top text-foreground">
+                  <Button asChild size="sm" variant="outline">
+                    <Link to={buildPath(`/agent/${agent.id}#rental-lifecycle`)}>
+                      <CreditCard className="h-3.5 w-3.5" aria-hidden />
+                      {t("page.rentalLifecycleAction")}
+                    </Link>
+                  </Button>
                 </td>
               ))}
             </tr>

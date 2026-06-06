@@ -24,6 +24,7 @@
     "clear": "Clear compare",
     "back": "Back to Directory",
     "removeAgent": "Remove {{name}}",
+    "rentalLifecycleAction": "Rent and review",
     "limit": "Only the first 4 agents are shown; remove extras from the URL or the compare list.",
     "conclusion": "Conclusion",
     "winner": "Recommended",
@@ -45,6 +46,7 @@
       "onboarding": "Onboarding Guide",
       "auditEvidence": "Audit Evidence",
       "pricing": "Pricing",
+      "rentalLifecycle": "Rental loop",
       "officialRoute": "Official Route"
     },
     "has": "Yes",

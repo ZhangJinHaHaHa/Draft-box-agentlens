@@ -24,6 +24,7 @@
     "clear": "清空对比",
     "back": "返回目录",
     "removeAgent": "移除 {{name}}",
+    "rentalLifecycleAction": "租赁与评价",
     "limit": "仅展示前 4 个 Agent；请从 URL 或对比清单中移除多余项。",
     "conclusion": "对比结论",
     "winner": "推荐选择",
@@ -45,6 +46,7 @@
       "onboarding": "入门指南",
       "auditEvidence": "审计证据",
       "pricing": "定价信息",
+      "rentalLifecycle": "租赁闭环",
       "officialRoute": "官方入口"
     },
     "has": "有",

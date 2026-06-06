@@ -201,4 +201,13 @@ describe("ComparePage", () => {
     expect(screen.getAllByText(/买家输入可能暴露给卖家运行环境/).length).toBeGreaterThan(0);
     expect(screen.getByText(/平台镜像已识别不等于平台担保安全/)).toBeInTheDocument();
   });
+
+  it("links compared agents to the rental and review lifecycle", () => {
+    renderComparePage("expert-criminal-defense,expert-insurance-claim,harvey");
+
+    expect(screen.getByText("租赁闭环")).toBeInTheDocument();
+    const rentalLinks = screen.getAllByRole("link", { name: "租赁与评价" });
+    expect(rentalLinks).toHaveLength(3);
+    expect(rentalLinks[0]).toHaveAttribute("href", "/zh/agent/expert-criminal-defense#rental-lifecycle");
+  });
 });

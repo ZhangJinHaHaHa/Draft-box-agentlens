@@ -201,7 +201,7 @@ export function RentalEntryCard({
   }
 
   return (
-    <Card>
+    <Card id="rental-lifecycle" className="scroll-mt-24">
       <CardHeader>
         <CardTitle>{t("rental.title")}</CardTitle>
         <p className="text-sm text-muted-foreground">
