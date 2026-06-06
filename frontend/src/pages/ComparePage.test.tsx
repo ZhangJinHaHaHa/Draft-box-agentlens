@@ -26,7 +26,12 @@ const cursorEntry: AgentCatalogEntry = {
   complexity: "low",
   hasOnboardingGuide: true,
   officialUrl: "https://cursor.com",
-  pricingHint: { zh: "订阅", en: "Subscription" }
+  pricingHint: { zh: "订阅", en: "Subscription" },
+  seller: {
+    kind: "platform",
+    label: { zh: "Cursor 团队", en: "Cursor team" },
+    contextScale: { zh: "产品级 IDE 使用数据", en: "Product-scale IDE usage data" }
+  }
 };
 
 const claudeCodeEntry: AgentCatalogEntry = {
@@ -45,7 +50,12 @@ const claudeCodeEntry: AgentCatalogEntry = {
   complexity: "medium",
   hasOnboardingGuide: true,
   officialUrl: "https://www.anthropic.com/claude-code",
-  pricingHint: { zh: "Token 计费", en: "Token-based" }
+  pricingHint: { zh: "Token 计费", en: "Token-based" },
+  seller: {
+    kind: "platform",
+    label: { zh: "Anthropic", en: "Anthropic" },
+    contextScale: { zh: "模型与终端编码工作流", en: "Model and terminal coding workflows" }
+  }
 };
 
 const catalogEntries = [cursorEntry, claudeCodeEntry];
@@ -103,6 +113,8 @@ describe("ComparePage", () => {
 
     expect(screen.getByRole("link", { name: "Cursor" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Claude Code" })).toBeInTheDocument();
+    expect(screen.getByText("背后卖家")).toBeInTheDocument();
+    expect(screen.getByText("Cursor 团队")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "清空对比" }));
 

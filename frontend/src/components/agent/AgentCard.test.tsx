@@ -109,4 +109,21 @@ describe("AgentCard", () => {
     expect(screen.getByTestId("location")).toHaveTextContent("/en/agents?ids=cursor");
     expect(screen.queryByText("detail page")).not.toBeInTheDocument();
   });
+
+  it("renders seller provenance for marketplace entries", () => {
+    const entry = {
+      ...makeEntry("marketplace", "expert", "Expert Agent"),
+      seller: {
+        kind: "solo" as const,
+        label: { zh: "刑辩律师", en: "Criminal-defense lawyer" },
+        contextScale: { zh: "真实案卷库", en: "Real case-file library" }
+      }
+    };
+
+    renderInLocale(entry, "en");
+
+    expect(screen.getByText(/Seller:/)).toBeInTheDocument();
+    expect(screen.getByText(/Criminal-defense lawyer/)).toBeInTheDocument();
+    expect(screen.getByText(/Real case-file library/)).toBeInTheDocument();
+  });
 });

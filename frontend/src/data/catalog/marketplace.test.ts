@@ -48,6 +48,8 @@ describe("marketplace expert agents", () => {
   it("every I18nText field carries both zh and en", () => {
     for (const entry of marketplaceAgents) {
       expect(entry.intro.zh && entry.intro.en, entry.id).toBeTruthy();
+      expect(entry.seller?.label.zh && entry.seller.label.en, entry.id).toBeTruthy();
+      expect(entry.seller?.contextScale.zh && entry.seller.contextScale.en, entry.id).toBeTruthy();
       for (const item of entry.recommendedFor) {
         expect(item.zh && item.en, entry.id).toBeTruthy();
       }
@@ -57,6 +59,15 @@ describe("marketplace expert agents", () => {
       if (entry.pricingHint) {
         expect(entry.pricingHint.zh && entry.pricingHint.en, entry.id).toBeTruthy();
       }
+    }
+  });
+
+  it("every marketplace agent identifies the seller and private context behind it", () => {
+    for (const entry of marketplaceAgents) {
+      expect(entry.seller, entry.id).toBeDefined();
+      expect(entry.seller?.kind, entry.id).toMatch(/^(solo|boutique|firm|institution|platform)$/);
+      expect(entry.seller?.label.zh, entry.id).toBeTruthy();
+      expect(entry.seller?.contextScale.zh, entry.id).toBeTruthy();
     }
   });
 

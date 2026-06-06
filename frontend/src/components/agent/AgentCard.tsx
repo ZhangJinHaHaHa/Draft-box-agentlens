@@ -77,6 +77,14 @@ export function AgentCard({ entry, className }: AgentCardProps): JSX.Element {
               {[entry.vendor, entry.category].filter(Boolean).join(" · ")}
             </p>
           )}
+          {entry.seller ? (
+            <div className="rounded-md border border-border/70 bg-card/45 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
+              <span className="font-medium text-foreground">{t("card.seller")}: </span>
+              {pickText(entry.seller.label, locale)}
+              <span className="mx-1 text-muted-foreground/70">·</span>
+              {pickText(entry.seller.contextScale, locale)}
+            </div>
+          ) : null}
           <p className="line-clamp-2 text-sm text-muted-foreground">{pickText(entry.intro, locale)}</p>
         </div>
 

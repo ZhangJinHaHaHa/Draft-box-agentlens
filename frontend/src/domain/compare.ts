@@ -11,6 +11,7 @@ export type CompareConclusion =
 export type CompareAttributeKey =
   | "scenario"
   | "unsuitableScenario"
+  | "seller"
   | "complexity"
   | "riskLevel"
   | "trustTier"
@@ -111,6 +112,9 @@ export function getCompareAttributeDiffs(
     scenario: valuesDiffer(agents.map((entry) => idsKey(entry.scenarios.map((item) => item.id)))),
     unsuitableScenario: valuesDiffer(
       agents.map((entry) => idsKey(entry.unsuitableScenarios.map((item) => item.id)))
+    ),
+    seller: valuesDiffer(
+      agents.map((entry) => `${entry.seller?.kind ?? ""}|${entry.seller?.label.en ?? entry.seller?.label.zh ?? ""}`)
     ),
     complexity: valuesDiffer(agents.map((entry) => entry.complexity)),
     riskLevel: valuesDiffer(agents.map((entry) => entry.riskLevel)),

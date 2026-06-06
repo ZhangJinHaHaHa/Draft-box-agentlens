@@ -27,6 +27,7 @@
     "attrs": {
       "scenario": "适用场景",
       "unsuitableScenario": "不适用场景",
+      "seller": "背后卖家",
       "complexity": "接入复杂度",
       "riskLevel": "风险等级",
       "trustTier": "信任等级",

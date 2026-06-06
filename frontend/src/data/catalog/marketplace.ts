@@ -29,6 +29,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "无罪辩点·刑辩数字律师",
     vendor: "执业刑辩律师 · 14 年一线",
+    seller: {
+      kind: "solo",
+      label: { zh: "执业刑辩律师 · 14 年一线", en: "Criminal-defense lawyer · 14 years in practice" },
+      contextScale: { zh: "多年真实案卷、辩点库与当地量刑倾向", en: "Years of case files, defense-angle libraries and local sentencing patterns" }
+    },
     intro: {
       zh: "由一位执业 14 年的刑辩律师上架，背后是其几年真实案卷沉淀的辩点库与当地量刑倾向。仅提供辩护思路与争议焦点梳理，辅助你和你的代理律师，不替代持证律师出具法律意见。",
       en: "Listed by a criminal-defense lawyer with 14 years of practice, backed by years of real case files, defense-argument libraries and local sentencing tendencies. It surfaces defense angles and disputed focal points to assist you and your counsel — it does not replace a licensed lawyer's opinion."
@@ -72,6 +77,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "中小企业税务筹划数字员工",
     vendor: "注册税务师 · 服务过 300+ 企业",
+    seller: {
+      kind: "solo",
+      label: { zh: "注册税务师 · 服务过 300+ 企业", en: "Certified tax adviser · 300+ SME clients" },
+      contextScale: { zh: "数百个筹划方案与当地税局实操口径", en: "Hundreds of planning cases and local tax-bureau practice notes" }
+    },
     intro: {
       zh: "由一位注册税务师上架，沉淀了几百个真实中小企业筹划方案与当地税局实操口径。帮你在合规边界内梳理可行的节税路径，辅助你的财务与税务顾问，不替代持证税务师的正式申报。",
       en: "Listed by a certified tax adviser, distilled from hundreds of real SME planning cases and local tax-bureau practice. It maps compliant tax-saving paths to assist your finance team and adviser — it does not replace a licensed adviser's formal filing."
@@ -113,6 +123,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "专利 OA 答审数字代理人",
     vendor: "专利代理师 · 撰写授权 800+ 件",
+    seller: {
+      kind: "solo",
+      label: { zh: "专利代理师 · 撰写授权 800+ 件", en: "Patent attorney · 800+ filed/granted cases" },
+      contextScale: { zh: "OA 答审策略、驳回理由与领域授权率记录", en: "Office-action response strategies, rejection patterns and field-level grant-rate records" }
+    },
     intro: {
       zh: "由一位累计撰写、答审 800+ 件专利的代理师上架，沉淀了审查意见应对策略与各领域授权率数据。帮你草拟 OA 答审意见、定位驳回理由，辅助专利代理流程。",
       en: "Listed by a patent attorney with 800+ filed/granted cases, carrying office-action response strategies and field-level grant-rate data. It drafts OA responses and pinpoints rejection grounds to assist the patent-prosecution workflow."
@@ -146,6 +161,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "早期项目尽调数字分析师",
     vendor: "前美元基金投资人 · 看过 2000+ 项目",
+    seller: {
+      kind: "solo",
+      label: { zh: "前美元基金投资人 · 看过 2000+ 项目", en: "Former USD-fund investor · 2,000+ deals screened" },
+      contextScale: { zh: "私有 deal memo、估值 comps 与投后复盘库", en: "Private deal memos, valuation comps and post-mortems" }
+    },
     intro: {
       zh: "由一位看过 2000+ 早期项目的投资人上架，背后是其私有的 deal memo、估值 comps 与投后复盘库。帮你对一个早期项目做结构化尽调、识别红旗，辅助你的投资决策。",
       en: "Listed by an investor who has screened 2,000+ early-stage deals, backed by a private library of deal memos, valuation comps and post-mortems. It runs structured due diligence on an early-stage project and flags red flags to assist your decision."
@@ -188,6 +208,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "亚马逊蓝海选品数字买手",
     vendor: "亚马逊大卖 · 7 年选品数据",
+    seller: {
+      kind: "solo",
+      label: { zh: "亚马逊大卖 · 7 年选品数据", en: "Amazon seller · 7 years of sourcing data" },
+      contextScale: { zh: "选品 win/loss、广告 ROI 与供应链底价记录", en: "Product win/loss records, ad ROI history and supplier floor prices" }
+    },
     intro: {
       zh: "由一位经营 7 年的亚马逊卖家上架，背后是其私有的选品 win/loss 记录、广告 ROI 与供应链底价数据。帮你筛选低竞争高需求的品类、估算利润空间。",
       en: "Listed by a 7-year Amazon seller, backed by private product win/loss records, ad-ROI history and supplier floor-price data. It screens low-competition high-demand niches and estimates margin room."
@@ -226,6 +251,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "小红书爆款选题数字操盘手",
     vendor: "MCN 操盘手 · 跑过千条投放",
+    seller: {
+      kind: "boutique",
+      label: { zh: "MCN 操盘手 · 跑过千条投放", en: "MCN operator · thousands of campaigns run" },
+      contextScale: { zh: "上千条投放数据、选题转化率与账号定位样本", en: "Thousands of campaign records, topic-conversion data and account-positioning samples" }
+    },
     intro: {
       zh: "由一位 MCN 操盘手上架，背后是其私有的上千条投放数据与选题转化率实测。帮你按账号定位生成可投的选题与开头，辅助内容生产。",
       en: "Listed by an MCN operator, backed by private data on thousands of campaigns and tested topic-conversion rates. It generates account-fit topics and openings to assist content production."
@@ -265,6 +295,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "重疾拒赔申诉数字顾问",
     vendor: "前理赔调查员 · 经手 1000+ 案",
+    seller: {
+      kind: "solo",
+      label: { zh: "前理赔调查员 · 经手 1000+ 案", en: "Former claims investigator · 1,000+ cases handled" },
+      contextScale: { zh: "各家拒赔条款、调查路径与申诉材料模板", en: "Insurer denial clauses, investigation patterns and appeal-material templates" }
+    },
     intro: {
       zh: "由一位经手 1000+ 理赔案的前调查员上架，沉淀了各家拒赔条款与申诉话术。帮你判断拒赔是否站得住、如何组织申诉材料，辅助维权，不替代持证律师或公估师。",
       en: "Listed by a former claims investigator with 1,000+ handled cases, carrying insurers' denial clauses and appeal scripts. It assesses whether a denial holds up and how to assemble an appeal — assisting your case, not replacing a licensed lawyer or loss adjuster."
@@ -300,6 +335,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "施工图审查避坑数字工程师",
     vendor: "结构工程师 · 审过 500+ 套图",
+    seller: {
+      kind: "solo",
+      label: { zh: "结构工程师 · 审过 500+ 套图", en: "Structural engineer · 500+ drawing sets reviewed" },
+      contextScale: { zh: "历年审图意见、消防规范与高频驳回点", en: "Review comments, fire-code constraints and high-frequency rejection points" }
+    },
     intro: {
       zh: "由一位审过 500+ 套施工图的结构工程师上架，沉淀了历年审图意见与消防、规范常见坑。帮你在送审前自查施工图、定位高频驳回点。",
       en: "Listed by a structural engineer who has reviewed 500+ drawing sets, carrying years of review comments and common fire-code/standard pitfalls. It self-checks your drawings before submission and locates high-frequency rejection points."
@@ -332,6 +372,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "芯片行业高端猎头数字顾问",
     vendor: "半导体猎头 · 私有候选人池",
+    seller: {
+      kind: "solo",
+      label: { zh: "半导体猎头 · 私有候选人池", en: "Semiconductor recruiter · private candidate pool" },
+      contextScale: { zh: "芯片候选人画像、placement 数据与 JD 响应记录", en: "Chip-talent profiles, placement history and JD response data" }
+    },
     intro: {
       zh: "由一位深耕半导体的猎头上架，背后是其私有候选人池与多年成功 placement 数据。帮你写出能打动芯片人才的 JD、判断一个画像的可挖性，辅助招聘。",
       en: "Listed by a semiconductor recruiter, backed by a private candidate pool and years of placement data. It writes JDs that resonate with chip talent and judges how poachable a profile is, to assist hiring."
@@ -369,6 +414,11 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     source: "marketplace",
     name: "美研申请文书数字顾问",
     vendor: "留学顾问 · 1500+ 成功申请",
+    seller: {
+      kind: "boutique",
+      label: { zh: "留学顾问 · 1500+ 成功申请", en: "Study-abroad counsellor · 1,500+ successful applications" },
+      contextScale: { zh: "各校录取偏好、文书结构样本与申请结果复盘", en: "School-level preferences, essay-structure samples and admissions post-mortems" }
+    },
     intro: {
       zh: "由一位经手 1500+ 成功申请的留学顾问上架，沉淀了各校录取偏好与文书命中规律。帮你按目标项目打磨 PS / 文书结构，辅助申请准备。",
       en: "Listed by a study-abroad counsellor with 1,500+ successful applications, carrying school-level admission preferences and essay patterns. It refines your PS/essay structure against a target program to assist your application."

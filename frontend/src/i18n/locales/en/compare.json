@@ -27,6 +27,7 @@
     "attrs": {
       "scenario": "Scenarios",
       "unsuitableScenario": "Unsuitable",
+      "seller": "Seller behind it",
       "complexity": "Complexity",
       "riskLevel": "Risk Level",
       "trustTier": "Trust Tier",

@@ -84,12 +84,31 @@ describe("compareAgents", () => {
 
   it("identifies which comparison attributes differ across selected agents", () => {
     const differences = getCompareAttributeDiffs([
-      entry({ id: "a", riskLevel: "low", complexity: "low" }),
-      entry({ id: "b", riskLevel: "high", complexity: "low" })
+      entry({
+        id: "a",
+        riskLevel: "low",
+        complexity: "low",
+        seller: {
+          kind: "solo",
+          label: { zh: "个人专家", en: "Solo expert" },
+          contextScale: { zh: "案卷库", en: "Case files" }
+        }
+      }),
+      entry({
+        id: "b",
+        riskLevel: "high",
+        complexity: "low",
+        seller: {
+          kind: "firm",
+          label: { zh: "机构团队", en: "Firm team" },
+          contextScale: { zh: "机构知识库", en: "Firm knowledge base" }
+        }
+      })
     ]);
 
     expect(differences.riskLevel).toBe(true);
     expect(differences.complexity).toBe(false);
     expect(differences.trustTier).toBe(false);
+    expect(differences.seller).toBe(true);
   });
 });

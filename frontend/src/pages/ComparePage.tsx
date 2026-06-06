@@ -164,6 +164,23 @@ export function ComparePage({ config }: { config: AppConfig }): JSX.Element {
               ))}
             </tr>
             <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.seller")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("seller")}>
+                  {agent.seller ? (
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">{pickText(agent.seller.label, locale)}</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {pickText(agent.seller.contextScale, locale)}
+                      </p>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </td>
+              ))}
+            </tr>
+            <tr>
               <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.riskLevel")}</td>
               {agents.map((agent) => (
                 <td key={agent.id} className={tdClass("riskLevel")}>
