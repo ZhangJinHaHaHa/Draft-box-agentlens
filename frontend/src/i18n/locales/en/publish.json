@@ -1,0 +1,277 @@
+{
+  "badge": "Developer market",
+  "title": "Publish an Agent",
+  "subtitle": "Choose whether to submit a Docker image first, then fill in the public listing and the matching integration material. Image submissions go through the trusted audit path; hosted API/MCP submissions start as a low-friction listing path.",
+  "mode": {
+    "title": "Will you submit a Docker image?",
+    "description": "This choice determines how much verifiable trust evidence AgentLens can attach to your Agent. Closed-source teams can start without an image; higher-risk Agents and teams seeking stronger trust tiers should submit a private image for audit.",
+    "selected": "Selected",
+    "continue": "Continue",
+    "trustTitle": "How AgentLens uses this material",
+    "trustDescription": "The public README is user-facing. Audit material is for the platform sandbox. Keeping them separate avoids exposing private implementation details as marketing copy.",
+    "options": {
+      "native-image": {
+        "title": "Submit a Docker image for trusted audit",
+        "subtitle": "Best for high-trust, higher-risk Agents and recommendation placement",
+        "body": "AgentLens pulls the image from the manifest, runs it in the sandbox, audits network boundaries, behavior evidence and resource usage, then binds manifest hash + image digest into an Agent identity fingerprint."
+      },
+      "hosted-api": {
+        "title": "Skip the image and list a hosted API/MCP Agent",
+        "subtitle": "Best for closed-source SaaS, early validation and externally hosted Agents",
+        "body": "You run the service. AgentLens routes through a gateway for access control, metering, health checks and black-box tests. The platform does not receive an image, so the trust tier stays below the audited image path."
+      }
+    },
+    "trust": {
+      "readme": {
+        "title": "README is user-facing",
+        "body": "Capabilities, scenarios, limits, examples and integration details feed the marketplace card and detail page."
+      },
+      "fingerprint": {
+        "title": "Image path creates a stronger fingerprint",
+        "body": "Manifest hash, image digest, audit report and on-chain token bind a concrete version and reduce impersonation or silent replacement risk."
+      },
+      "privacy": {
+        "title": "Private material should stay private",
+        "body": "API keys, private prompts, internal hosts and source code should not go into the README or a public manifest. Use secrets management and private image credentials later."
+      }
+    },
+    "help": {
+      "label": "Docker image guidance",
+      "title": "Why AgentLens encourages image submission",
+      "body": "Submitting an image is not submitting source code. AgentLens encourages private image submission because it makes audits reproducible, verifiable and bound to a specific version while preserving closed-source implementation.",
+      "benefitsTitle": "Benefits",
+      "recommendedTitle": "Recommended when",
+      "notRequiredTitle": "You can skip it when",
+      "benefits": {
+        "fingerprint": "Get a stronger Agent identity fingerprint: manifest hash + image digest + audit report + on-chain token.",
+        "audit": "Let the sandbox verify network access, RPC boundaries, resource usage and abnormal behavior.",
+        "ranking": "Passed audits are better suited for higher Trust Tiers, recommendations and high-trust rankings.",
+        "disputes": "If a dispute happens, AgentLens can rerun the same version and check for privilege abuse or version swaps."
+      },
+      "recommended": {
+        "highRisk": "The Agent touches funds, trading, enterprise permissions, sensitive data or autonomous actions.",
+        "trustTier": "You want an audit badge, strong fingerprint and higher trust tier.",
+        "platformLease": "You want the platform to provide a fuller rental, access, review and reputation loop."
+      },
+      "notRequired": {
+        "closedSource": "Your closed-source SaaS is still validating demand and only exposes API/MCP for now.",
+        "earlyListing": "You only want a marketplace listing first to test demand and pricing.",
+        "externalSaas": "The Agent runs entirely in your own cloud and AgentLens only provides discovery and gateway access."
+      }
+    }
+  },
+  "details": {
+    "pathLabel": "Current path",
+    "noPath": "No path selected",
+    "changePath": "Change path"
+  },
+  "readme": {
+    "title": "Public README / marketplace listing",
+    "description": "This is what end users see for search, recommendations, detail pages and rental decisions. Do not include API keys, private prompts, internal hosts or source code details.",
+    "agentName": "Unique Agent name",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "Hermes Research Agent",
+    "summary": "One-line summary",
+    "summaryPlaceholder": "This Agent turns on-chain risk events into actionable research summaries.",
+    "useCases": "Use cases",
+    "useCasesPlaceholder": "DeFi risk monitoring\nMarket research\nInvestment summaries",
+    "capabilities": "Capabilities",
+    "capabilitiesPlaceholder": "Read public data sources\nGenerate structured reports\nOutput risk signals",
+    "limitations": "Limits / unsuitable scenarios",
+    "limitationsPlaceholder": "Does not custody funds\nDoes not sign transactions for users",
+    "example": "Input/output example",
+    "examplePlaceholder": "Input: analyze protocol risk events over the last 24 hours\nOutput: event summary, affected scope, suggested actions",
+    "integrationType": "Integration type",
+    "docsUrl": "Docs URL",
+    "supportUrl": "Support URL",
+    "validationTitle": "README validation",
+    "ready": "Complete",
+    "needsFixes": "Needs details",
+    "ok": "The public listing has the minimum required marketplace details.",
+    "validation": {
+      "agentName": "Unique Agent name must match ^[a-zA-Z0-9_-]{1,64}$.",
+      "summary": "Add a one-line summary.",
+      "useCases": "Add at least one use case.",
+      "capabilities": "Add at least one capability.",
+      "integrationType": "Add an integration type."
+    }
+  },
+  "manifest": {
+    "title": "Audit manifest / image material",
+    "description": "These fields are for the platform sandbox. The image can be a private registry reference and should later use a short-lived pull credential. Never put secrets in the manifest.",
+    "dockerImage": "Docker image",
+    "allowedHosts": "Allowed hosts",
+    "allowedRpcEndpoints": "Allowed RPC endpoints",
+    "manifestUrl": "Manifest URL",
+    "stakeOverride": "Stake override (ETH)",
+    "stakePlaceholder": "Use required minimum"
+  },
+  "hosted": {
+    "title": "Hosted API/MCP integration",
+    "description": "Without an image, you run the Agent yourself. AgentLens can still provide gateway access control, metering, health checks, black-box tests and dynamic reputation events.",
+    "endpointUrl": "Agent API / MCP Endpoint",
+    "schemaUrl": "OpenAPI / MCP Schema URL",
+    "healthcheckUrl": "Healthcheck URL",
+    "authMethod": "Auth method",
+    "authMethodPlaceholder": "Platform-held API key / OAuth client / no auth",
+    "submitTitle": "Quick listing draft",
+    "submitDescription": "This path saves a hosted Agent draft first. After confirming the material, submit it for black-box review. The local MVP now includes approval, secrets, test leases, gateway invocation and metering summaries.",
+    "submitDraft": "Save quick listing draft",
+    "savingDraft": "Saving draft",
+    "savedTitle": "Draft generated",
+    "savedBody": "Draft ID: {{hostedAgentId}}. You can submit it for black-box review; rentals still require approval and gateway integration.",
+    "review": {
+      "submit": "Submit black-box review",
+      "submitting": "Submitting review",
+      "title": "Pending review created",
+      "fingerprint": "Hosted fingerprint",
+      "healthcheck": "Healthcheck",
+      "healthcheckPassed": "Passed, HTTP {{status}}, {{latency}}ms",
+      "healthcheckFailed": "Failed, HTTP {{status}}",
+      "healthcheckMissing": "Not configured; endpoint needs manual validation",
+      "draftMissing": "Save the hosted Agent draft first.",
+      "noteFingerprint": "AgentLens generated a hosted identity fingerprint from the README, endpoint, schema and developer address.",
+      "noteReview": "This path has no image, so it starts with black-box review and should rank below audited image submissions.",
+      "noteGateway": "After review, use the local MVP panel to approve, configure secrets, create a test lease and verify the Gateway."
+    },
+    "gateway": {
+      "title": "Gateway local MVP",
+      "description": "Validates the no-image rental loop: approval, platform-held secrets, lease tokens, proxy invocation, rate limits and metering. This is not the final payment, split or refund system.",
+      "approved": "Approved",
+      "pending": "Pending",
+      "yes": "Yes",
+      "no": "No",
+      "metrics": {
+        "secret": "Secret configured",
+        "activeLeases": "Active leases",
+        "totalRequests": "Requests",
+        "failedRequests": "Failed/rejected"
+      },
+      "actions": {
+        "approve": "Approve listing (local)",
+        "approving": "Approving",
+        "refresh": "Refresh summary",
+        "refreshing": "Refreshing",
+        "configureSecret": "Configure Gateway secret",
+        "configuringSecret": "Configuring",
+        "createLease": "Create test lease",
+        "creatingLease": "Creating",
+        "invoke": "Test Gateway invoke",
+        "invoking": "Invoking"
+      },
+      "secret": {
+        "headerName": "Downstream auth header",
+        "headerValue": "Downstream secret",
+        "headerValuePlaceholder": "Local vault simulation only",
+        "note": "The local MVP stores downstream secrets in runtime JSON. Production should replace this with KMS/Vault/managed Secret Manager and admin authorization."
+      },
+      "lease": {
+        "userId": "Test user ID",
+        "durationHours": "Lease duration (hours)",
+        "maxRequests": "Max requests",
+        "maxRequestsPerMinute": "Per-minute limit",
+        "leaseId": "Lease ID",
+        "expiresAt": "Expires at",
+        "accessToken": "Access token",
+        "tokenNote": "The token is returned only at creation time; the backend stores only a hash. Real rentals should create leases from payment or credit orders."
+      },
+      "invoke": {
+        "payload": "Test invocation JSON",
+        "result": "Invocation result",
+        "error": "Invocation error"
+      },
+      "messages": {
+        "approved": "Hosted Agent approved in the local MVP.",
+        "secretConfigured": "Gateway secret configured. Header: {{header}}.",
+        "leaseCreated": "Test lease created. You can use the token through the Gateway.",
+        "invoked": "Gateway invocation completed and metering summary refreshed."
+      },
+      "errors": {
+        "draftMissing": "Save the hosted Agent draft first.",
+        "reviewMissing": "Submit and complete the black-box review record first.",
+        "approvalMissing": "Approve the hosted Agent first.",
+        "secretMissing": "Add the downstream auth header and secret.",
+        "gatewayNotReady": "Approve the Agent and configure the Gateway secret first.",
+        "leaseMissing": "Create a test lease token first.",
+        "leaseUserId": "Test user ID is required.",
+        "durationHours": "Lease duration must be an integer between 1 and 720.",
+        "maxRequests": "Max requests must be an integer between 1 and 100000.",
+        "maxRequestsPerMinute": "Per-minute limit must be an integer between 1 and 1000.",
+        "payloadJson": "Invocation payload must be valid JSON."
+      }
+    },
+    "validation": {
+      "title": "Hosted integration validation",
+      "ready": "Ready",
+      "needsFixes": "Needs details",
+      "ok": "Hosted API/MCP material is ready for a draft.",
+      "fixHosted": "Complete the hosted API/MCP integration material first.",
+      "apiMissing": "Hosted Agent API URL is not configured, so the draft cannot be saved.",
+      "endpointUrl": "Add a valid http(s) Agent endpoint.",
+      "schemaUrl": "Add a valid http(s) schema URL.",
+      "healthcheckUrl": "Healthcheck URL must be valid http(s), or left blank.",
+      "authMethod": "Add an auth method."
+    }
+  },
+  "validation": {
+    "title": "Manifest validation",
+    "ready": "Ready",
+    "needsFixes": "Needs fixes",
+    "ok": "Manifest shape is valid for the current audit sandbox.",
+    "stakeTooLow": "Stake amount must cover serviceFee + minimumBond.",
+    "stakeInvalid": "Stake override must be a valid ETH amount.",
+    "fixManifest": "Fix manifest validation errors before staking.",
+    "fixProfile": "Complete the public README / marketplace listing first.",
+    "agentName": "agent_name must match ^[a-zA-Z0-9_-]{1,64}$.",
+    "image": "image must be a non-empty Docker image reference.",
+    "allowedHostsRequired": "allowed_hosts must include at least one public host.",
+    "allowedHostsWildcard": "allowed_hosts cannot include wildcard entries.",
+    "allowedHostsPrivate": "allowed_hosts cannot include private, loopback, or host-machine targets.",
+    "allowedHostsInvalid": "allowed_hosts contains an invalid host.",
+    "allowedHostsPath": "allowed_hosts should be hostnames, not paths or URLs.",
+    "rpcRequired": "allowed_rpc_endpoints must include at least one http(s) endpoint.",
+    "rpcInvalid": "allowed_rpc_endpoints contains an invalid URL.",
+    "rpcProtocol": "allowed_rpc_endpoints must use http or https.",
+    "rpcPrivate": "allowed_rpc_endpoints cannot include private or loopback targets.",
+    "manifestUrlInvalid": "manifestUrl must be a valid public http(s) URL.",
+    "manifestUrlProtocol": "manifestUrl must use http or https so the audit listener can fetch it."
+  },
+  "wallet": {
+    "title": "Wallet and stake",
+    "wallet": "Wallet",
+    "chain": "Chain",
+    "serviceFee": "Service fee",
+    "minimumBond": "Minimum bond",
+    "minimumNote": "Default stake is now set to the smallest test unit. Before mainnet or real fund flow, switch to risk-based bonding.",
+    "notConnected": "Not connected",
+    "unavailable": "Wallet unavailable",
+    "disconnected": "Not connected",
+    "error": "Connection error",
+    "loading": "Loading",
+    "connect": "Connect wallet",
+    "connecting": "Connecting",
+    "switchChain": "Switch to chain {{chainId}}",
+    "stake": "Stake and request audit",
+    "submitting": "Submitting stake",
+    "pricingError": "Unable to load registry pricing.",
+    "pricingMissing": "Registry pricing is not loaded yet.",
+    "walletError": "Wallet connection is unavailable or was rejected.",
+    "unknownChain": "unknown",
+    "chainMismatch": "Wallet is on chain {{current}}, expected {{expected}}.",
+    "switchError": "Unable to switch chain.",
+    "txFailed": "Stake transaction failed."
+  },
+  "success": {
+    "title": "Pending audit created",
+    "tx": "Tx",
+    "openToken": "Open token #{{tokenId}}"
+  },
+  "preview": {
+    "title": "Submission preview",
+    "description": "Public README and technical submission material are separated so they can later feed the marketplace detail page and audit system independently.",
+    "readme": "Public README",
+    "manifest": "Audit manifest",
+    "hosted": "Hosted integration",
+    "open": "Open manifest URL"
+  }
+}

@@ -38,6 +38,16 @@ describe("AgentMarketplace", function () {
 
     const hasAccess = await contract.hasAccess(1, buyer1.address);
     assert.strictEqual(hasAccess, true);
+
+    const count = await contract.getAccessCount(1);
+    assert.strictEqual(count.toNumber(), 1);
+
+    const record = await contract.getAccessRecord(1, 0);
+    assert.strictEqual(record.tokenId.toNumber(), 1);
+    assert.strictEqual(record.buyer, buyer1.address);
+    assert.strictEqual(record.isRental, true);
+    assert.strictEqual(record.amountPaid.toString(), ethers.utils.parseEther("0.05").toString());
+    assert.ok(record.expiresAt.toNumber() > 0);
   });
 
   it("allows permanent purchase", async function () {

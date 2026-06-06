@@ -33,6 +33,10 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "wallet": {
+    "label": "Wallet",
+    "connecting": "Connecting"
+  },
   "agentSource": {
     "curated": "Curated",
     "listed": "Listed",

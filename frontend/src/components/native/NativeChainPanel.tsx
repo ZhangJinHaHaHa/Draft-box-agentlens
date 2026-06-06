@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, BadgeCheck, History } from "lucide-react";
 
 import marketplaceArtifact from "../../../../contracts/artifacts/AgentMarketplace.json";
@@ -29,6 +30,7 @@ import { useAgentCredit } from "@/hooks/useAgentCredit";
 import { useAgentPricing } from "@/hooks/useAgentPricing";
 import { useAgentRiskProfile } from "@/hooks/useAgentRiskProfile";
 import { useAuditHistory } from "@/hooks/useAuditHistory";
+import { NativeMarketplaceActions } from "./NativeMarketplaceActions";
 
 interface NativeChainPanelProps {
   config: AppConfig;
@@ -37,14 +39,13 @@ interface NativeChainPanelProps {
 
 const SCORE_DIMENSIONS: Array<{
   key: keyof DimensionalScoresOnChain;
-  label: string;
 }> = [
-  { key: "security", label: "Security" },
-  { key: "taskExecution", label: "Task execution" },
-  { key: "cognitive", label: "Cognitive" },
-  { key: "environment", label: "Environment" },
-  { key: "engineering", label: "Engineering" },
-  { key: "compliance", label: "Compliance" }
+  { key: "security" },
+  { key: "taskExecution" },
+  { key: "cognitive" },
+  { key: "environment" },
+  { key: "engineering" },
+  { key: "compliance" }
 ];
 
 function scoreTone(score: number): string {
@@ -62,13 +63,14 @@ function statusTone(status: bigint | number): "default" | "secondary" | "danger"
 }
 
 export function NativeChainPanel({ config, tokenId }: NativeChainPanelProps): JSX.Element {
+  const { t } = useTranslation("detail");
   const parsed = parseTokenIdInput(tokenId);
 
   if (!parsed.ok) {
     return (
       <Card>
         <CardContent className="py-8 text-sm text-muted-foreground">
-          This native entry does not expose a valid on-chain token id.
+          {t("nativeChain.invalidToken")}
         </CardContent>
       </Card>
     );
@@ -86,6 +88,7 @@ function NativeChainPanelInner({
   tokenId: bigint;
   tokenIdLabel: string;
 }): JSX.Element {
+  const { t } = useTranslation("detail");
   const { buildPath } = useLocale();
   const [client] = useState<AgentAuditRegistryReadContract>(() => createAgentAuditRegistryClient(config));
   const [v2Client] = useState<AgentAuditRegistryV2Client>(() =>
@@ -130,10 +133,10 @@ function NativeChainPanelInner({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>On-chain native profile</CardTitle>
+          <CardTitle>{t("nativeChain.profileTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          {credit.errorMessage ?? "Unable to load the on-chain profile for this native agent."}
+          {credit.errorMessage ?? t("nativeChain.profileLoadError")}
         </CardContent>
       </Card>
     );
@@ -142,26 +145,33 @@ function NativeChainPanelInner({
   const profile = credit.profile;
   const latestAudit = credit.latestAudit;
   const reputation = credit.reputation;
+  const rentalRecords = accessHistory.records.filter((record) => record.isRental);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>On-chain native profile</CardTitle>
+            <CardTitle>{t("nativeChain.profileTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="grid gap-4 text-sm sm:grid-cols-2">
-              <Meta label="Token" value={`#${tokenIdLabel}`} />
-              <Meta label="Developer" value={truncateAddress(profile.developer)} mono title={profile.developer} />
-              <Meta label="Bond" value={formatBondWei(profile.totalBond)} />
-              <Meta label="Audits" value={String(Number(profile.auditCount))} />
-              <Meta label="Created" value={formatTimestamp(profile.createdAt)} />
-              <Meta label="Last audit" value={formatTimestamp(profile.lastAuditAt)} />
+              <Meta label={t("nativeChain.meta.token")} value={`#${tokenIdLabel}`} />
+              <Meta label={t("nativeChain.meta.developer")} value={truncateAddress(profile.developer)} mono title={profile.developer} />
+              <Meta label={t("nativeChain.meta.bond")} value={formatBondWei(profile.totalBond)} />
+              <Meta label={t("nativeChain.meta.audits")} value={String(Number(profile.auditCount))} />
+              <Meta label={t("nativeChain.meta.created")} value={formatTimestamp(profile.createdAt)} />
+              <Meta label={t("nativeChain.meta.lastAudit")} value={formatTimestamp(profile.lastAuditAt)} />
+              <Meta
+                label={t("nativeChain.meta.zkVerifier")}
+                value={config.zkVerifierAddress ? truncateAddress(config.zkVerifierAddress) : t("nativeChain.notConfigured")}
+                mono={Boolean(config.zkVerifierAddress)}
+                title={config.zkVerifierAddress}
+              />
             </dl>
             {profile.blacklisted ? (
               <Badge variant="danger" className="mt-4">
-                Blacklisted
+                {t("nativeChain.blacklisted")}
               </Badge>
             ) : null}
           </CardContent>
@@ -169,48 +179,47 @@ function NativeChainPanelInner({
 
         <Card>
           <CardHeader>
-            <CardTitle>Reputation and access</CardTitle>
+            <CardTitle>{t("nativeChain.reputationTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {reputation ? (
               <div className="grid gap-3 sm:grid-cols-3">
-                <Metric label="Score" value={String(reputation.currentReputationScore)} />
-                <Metric label="Appeals won" value={String(reputation.successfulAppeals)} />
-                <Metric label="Appeals lost" value={String(reputation.failedAppeals)} />
+                <Metric label={t("nativeChain.meta.score")} value={String(reputation.currentReputationScore)} />
+                <Metric label={t("nativeChain.meta.appealsWon")} value={String(reputation.successfulAppeals)} />
+                <Metric label={t("nativeChain.meta.appealsLost")} value={String(reputation.failedAppeals)} />
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No reputation record returned by the registry.</p>
+              <p className="text-sm text-muted-foreground">{t("nativeChain.noReputation")}</p>
             )}
             <Separator />
             {pricing.status === "ready" && pricing.pricing ? (
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Metric
-                  label="Rent / day"
-                  value={pricing.pricing.configured ? formatPriceEth(pricing.pricing.pricePerDay) : "Not set"}
+                  label={t("nativeChain.meta.rentPerDay")}
+                  value={pricing.pricing.configured ? formatPriceEth(pricing.pricing.pricePerDay) : t("nativeChain.notSet")}
                 />
-                <Metric
-                  label="Buy"
-                  value={
-                    pricing.pricing.configured && pricing.pricing.buyPrice > 0n
-                      ? formatPriceEth(pricing.pricing.buyPrice)
-                      : "Not for sale"
-                  }
-                />
-                <Metric label="Accesses" value={String(pricing.accessCount ?? 0)} />
+                <Metric label={t("nativeChain.meta.accesses")} value={String(pricing.accessCount ?? 0)} />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Marketplace pricing is not configured for this frontend.
+                {t("nativeChain.marketplaceUnavailable")}
               </p>
             )}
           </CardContent>
         </Card>
       </div>
 
+      <NativeMarketplaceActions
+        config={config}
+        tokenId={tokenId}
+        marketplaceClient={marketplaceClient}
+        pricing={pricing.pricing}
+      />
+
       {risk.status === "ready" && (risk.averageScores || risk.riskProfile) ? (
         <Card>
           <CardHeader>
-            <CardTitle>Capability and scene fit</CardTitle>
+            <CardTitle>{t("nativeChain.capabilityTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
             {risk.averageScores ? <ScoreBars scores={risk.averageScores} /> : null}
@@ -229,7 +238,7 @@ function NativeChainPanelInner({
                               : "danger"
                         }
                       >
-                        {scenario.suitability}
+                        {t(`nativeChain.suitability.${scenario.suitability}`)}
                       </Badge>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">{scenario.reasoning}</p>
@@ -246,14 +255,14 @@ function NativeChainPanelInner({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BadgeCheck className="h-4 w-4" aria-hidden />
-              Latest audit
+              {t("nativeChain.latestAudit")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {latestAudit ? (
               <LatestAudit tokenId={tokenIdLabel} audit={latestAudit} auditIndex={Math.max(Number(profile.auditCount) - 1, 0)} />
             ) : (
-              <p className="text-sm text-muted-foreground">No audit record yet.</p>
+              <p className="text-sm text-muted-foreground">{t("nativeChain.noAudit")}</p>
             )}
           </CardContent>
         </Card>
@@ -262,7 +271,7 @@ function NativeChainPanelInner({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <History className="h-4 w-4" aria-hidden />
-              Audit history
+              {t("nativeChain.auditHistory")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -288,30 +297,30 @@ function NativeChainPanelInner({
                 })}
                 {auditHistory.hasMore ? (
                   <Button variant="secondary" size="sm" onClick={() => void auditHistory.loadMore()}>
-                    {auditHistory.isLoadingMore ? "Loading..." : "Load more audits"}
+                    {auditHistory.isLoadingMore ? t("nativeChain.loading") : t("nativeChain.loadMoreAudits")}
                   </Button>
                 ) : null}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No audit history found.</p>
+              <p className="text-sm text-muted-foreground">{t("nativeChain.noAuditHistory")}</p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {accessHistory.status === "ready" && accessHistory.records.length > 0 ? (
+      {accessHistory.status === "ready" && rentalRecords.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Recent marketplace access</CardTitle>
+            <CardTitle>{t("nativeChain.recentRentals")}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
-            {accessHistory.records.map((record, idx) => (
+            {rentalRecords.map((record, idx) => (
               <div key={`${record.buyer}-${idx}`} className="rounded-md border border-border p-4 text-sm">
                 <p className="font-mono text-xs text-muted-foreground">{truncateAddress(record.buyer)}</p>
-                <p className="mt-1">{record.isRental ? "Rental" : "Permanent purchase"}</p>
+                <p className="mt-1">{t("nativeChain.rental")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Paid {formatPriceEth(record.amountPaid)}
-                  {record.expiresAt > 0 ? ` · expires ${formatTimestamp(record.expiresAt)}` : ""}
+                  {t("nativeChain.paid", { amount: formatPriceEth(record.amountPaid) })}
+                  {record.expiresAt > 0 ? ` · ${t("nativeChain.expires", { time: formatTimestamp(record.expiresAt) })}` : ""}
                 </p>
               </div>
             ))}
@@ -331,8 +340,9 @@ function LatestAudit({
   audit: AuditRecord;
   auditIndex: number;
 }): JSX.Element {
+  const { t } = useTranslation("detail");
   const { buildPath } = useLocale();
-  const status = getAuditStatusLabel(audit.status);
+  const status = getLocalizedAuditStatus(audit.status, t);
   const attestationValue = isAttestationPresent(audit.attestationHash)
     ? (audit.attestationHash as string)
     : "—";
@@ -341,16 +351,16 @@ function LatestAudit({
     <div className="flex flex-col gap-4 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={statusTone(audit.status)}>{status}</Badge>
-        <span className="text-muted-foreground">Score {String(Number(audit.auditScore))}</span>
+        <span className="text-muted-foreground">{t("nativeChain.score")} {String(Number(audit.auditScore))}</span>
         <span className="text-muted-foreground">{formatTimestamp(audit.timestamp)}</span>
       </div>
       <dl className="grid gap-3 sm:grid-cols-2">
-        <Meta label="Report CID" value={audit.reportCID || "—"} mono />
-        <Meta label="Attestation" value={attestationValue} mono />
+        <Meta label={t("nativeChain.meta.reportCid")} value={audit.reportCID || "—"} mono />
+        <Meta label={t("nativeChain.meta.attestation")} value={attestationValue} mono />
       </dl>
       <Button asChild size="sm" variant="secondary" className="w-fit">
         <Link to={buildPath(`/agent/${tokenId}/audits/${String(audit.auditId)}/${auditIndex}`)}>
-          View report
+          {t("nativeChain.viewReport")}
           <ArrowRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
       </Button>
@@ -369,29 +379,31 @@ function AuditHistoryRow({
   auditIndex: number;
   buildPath: (path: string) => string;
 }): JSX.Element {
+  const { t } = useTranslation("detail");
   return (
     <Link
       to={buildPath(`/agent/${tokenId}/audits/${String(audit.auditId)}/${auditIndex}`)}
       className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm hover:border-foreground/40"
     >
       <div className="flex items-center gap-2">
-        <Badge variant={statusTone(audit.status)}>{getAuditStatusLabel(audit.status)}</Badge>
-        <span>Audit #{String(audit.auditId)}</span>
+        <Badge variant={statusTone(audit.status)}>{getLocalizedAuditStatus(audit.status, t)}</Badge>
+        <span>{t("nativeChain.auditNumber", { auditId: String(audit.auditId) })}</span>
       </div>
-      <span className="text-xs text-muted-foreground">Score {String(Number(audit.auditScore))}</span>
+      <span className="text-xs text-muted-foreground">{t("nativeChain.score")} {String(Number(audit.auditScore))}</span>
     </Link>
   );
 }
 
 function ScoreBars({ scores }: { scores: DimensionalScoresOnChain }): JSX.Element {
+  const { t } = useTranslation("detail");
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {SCORE_DIMENSIONS.map(({ key, label }) => {
+      {SCORE_DIMENSIONS.map(({ key }) => {
         const score = scores[key];
         return (
           <div key={key} className="flex flex-col gap-1">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+              <span className="font-medium uppercase tracking-wide text-muted-foreground">{t(`nativeChain.dimensions.${key}`)}</span>
               <span>{score}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -402,6 +414,10 @@ function ScoreBars({ scores }: { scores: DimensionalScoresOnChain }): JSX.Elemen
       })}
     </div>
   );
+}
+
+function getLocalizedAuditStatus(status: bigint | number, t: (key: string) => string): string {
+  return t(`nativeChain.status.${getAuditStatusLabel(status)}`);
 }
 
 function Metric({ label, value }: { label: string; value: string }): JSX.Element {

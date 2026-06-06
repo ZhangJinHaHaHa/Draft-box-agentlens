@@ -33,6 +33,10 @@
     "light": "浅色",
     "dark": "深色"
   },
+  "wallet": {
+    "label": "钱包",
+    "connecting": "连接中"
+  },
   "agentSource": {
     "curated": "重点维护",
     "listed": "已收录",

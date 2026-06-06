@@ -62,4 +62,46 @@ describe("readAppConfig", () => {
       }
     });
   });
+
+  it("returns optional marketplace, review, and ZK verifier addresses", () => {
+    expect(
+      readAppConfig({
+        VITE_AUDIT_RPC_URL: "https://rpc.edge.local",
+        VITE_AUDIT_REGISTRY_ADDRESS: "0x1111111111111111111111111111111111111111",
+        VITE_AUDIT_CHAIN_ID: "31337",
+        VITE_AUDIT_MARKETPLACE_ADDRESS: "0x2222222222222222222222222222222222222222",
+        VITE_AUDIT_REVIEW_REGISTRY_ADDRESS: "0x3333333333333333333333333333333333333333",
+        VITE_AUDIT_ZK_VERIFIER_ADDRESS: "0x4444444444444444444444444444444444444444"
+      })
+    ).toEqual({
+      ok: true,
+      config: {
+        rpcUrl: "https://rpc.edge.local",
+        registryAddress: "0x1111111111111111111111111111111111111111",
+        chainId: 31337,
+        marketplaceAddress: "0x2222222222222222222222222222222222222222",
+        reviewRegistryAddress: "0x3333333333333333333333333333333333333333",
+        zkVerifierAddress: "0x4444444444444444444444444444444444444444"
+      }
+    });
+  });
+
+  it("returns the optional hosted Agent API URL", () => {
+    expect(
+      readAppConfig({
+        VITE_AUDIT_RPC_URL: "https://rpc.edge.local",
+        VITE_AUDIT_REGISTRY_ADDRESS: "0x1111111111111111111111111111111111111111",
+        VITE_AUDIT_CHAIN_ID: "31337",
+        VITE_HOSTED_AGENT_API_URL: "http://127.0.0.1:3001/api/hosted-agents"
+      })
+    ).toEqual({
+      ok: true,
+      config: {
+        rpcUrl: "https://rpc.edge.local",
+        registryAddress: "0x1111111111111111111111111111111111111111",
+        chainId: 31337,
+        hostedAgentApiUrl: "http://127.0.0.1:3001/api/hosted-agents"
+      }
+    });
+  });
 });
