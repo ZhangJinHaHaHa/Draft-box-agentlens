@@ -59,6 +59,7 @@ export function RecommendPage({ config }: RecommendPageProps): JSX.Element {
   const [platformError, setPlatformError] = useState<string | null>(null);
   const [runMeta, setRunMeta] = useState<RecommendationRunMeta | null>(null);
   const { entries, byId } = useCatalog({ config, skipNative: true });
+  const visiblePlatformError = platformError ?? (!config.platformApiUrl ? t("errors.platformApiMissing") : null);
 
   const visibleResults = useMemo(
     () => {
@@ -206,7 +207,7 @@ export function RecommendPage({ config }: RecommendPageProps): JSX.Element {
                   </Badge>
                   {platformUser ? <Badge variant="outline">{platformUser.walletAddress}</Badge> : null}
                 </div>
-                {platformError ? <p className="mt-3 text-sm text-destructive">{platformError}</p> : null}
+                {visiblePlatformError ? <p className="mt-3 text-sm text-destructive">{visiblePlatformError}</p> : null}
               </div>
             ) : null}
             <Button
