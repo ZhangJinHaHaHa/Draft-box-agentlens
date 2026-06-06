@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   createMockGoogleUser,
+  createPlatformOrder,
   getAccessBridge,
   getPlatformAdminInspect,
   getPlatformCredits,
+  getPlatformOrder,
   migrateWallet,
   requestWalletExport,
-  requestPaidLlmRecommendation
+  requestPaidLlmRecommendation,
+  submitMockPaymentCallback
 } from "./platformClient";
 
 describe("platformClient", () => {
@@ -134,6 +137,102 @@ describe("platformClient", () => {
     );
 
     expect(account.balance).toBe(97);
+  });
+
+  it("creates a local order and applies a mock payment callback", async () => {
+    const order = await createPlatformOrder(
+      "https://platform.example",
+      {
+        userId: "web2-user-1",
+        agentId: "cursor",
+        amount: "20.00",
+        currency: "CREDITS"
+      },
+      async (url, init) => {
+        expect(url).toBe("https://platform.example/api/orders");
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            order: {
+              orderId: "order-1",
+              userId: "web2-user-1",
+              agentId: "cursor",
+              status: "pending",
+              amount: "20.00",
+              currency: "CREDITS",
+              createdAt: "2026-06-05T00:00:00.000Z",
+              updatedAt: "2026-06-05T00:00:00.000Z"
+            }
+          }),
+          { status: 201 }
+        );
+      }
+    );
+    const payment = await submitMockPaymentCallback(
+      "https://platform.example",
+      {
+        orderId: "order-1",
+        paymentProvider: "local-mock",
+        providerPaymentId: "local-payment-1",
+        idempotencyKey: "local-rental:cursor:web2-user-1:1",
+        paidAmount: "20.00"
+      },
+      async (url, init) => {
+        expect(url).toBe("https://platform.example/api/payments/mock-callback");
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            order: {
+              orderId: "order-1",
+              userId: "web2-user-1",
+              agentId: "cursor",
+              status: "gateway_lease_issued",
+              amount: "20.00",
+              currency: "CREDITS",
+              createdAt: "2026-06-05T00:00:00.000Z",
+              updatedAt: "2026-06-05T00:01:00.000Z",
+              paidAt: "2026-06-05T00:01:00.000Z",
+              paidAmount: "20.00",
+              gatewayLeaseToken: "gateway-lease-1",
+              gatewayLeaseIssuedAt: "2026-06-05T00:01:00.000Z",
+              gatewayLeaseExpiresAt: "2026-07-05T00:01:00.000Z",
+              chainGrantStatus: "pending_chain_grant"
+            },
+            bridge: {
+              bridgeId: "access-bridge-1",
+              orderId: "order-1",
+              status: "pending_chain_grant",
+              expectedGrantFunction: "grantRentalAccess",
+              gatewayLeaseToken: "gateway-lease-1",
+              gatewayLeaseIssuedAt: "2026-06-05T00:01:00.000Z",
+              gatewayLeaseExpiresAt: "2026-07-05T00:01:00.000Z"
+            },
+            idempotentReplay: false
+          }),
+          { status: 200 }
+        );
+      }
+    );
+    const lookup = await getPlatformOrder(
+      "https://platform.example",
+      "order-1",
+      async (url) => {
+        expect(url).toBe("https://platform.example/api/orders/order-1");
+        return new Response(
+          JSON.stringify({
+            order: payment.order,
+            accessBridge: payment.bridge
+          }),
+          { status: 200 }
+        );
+      }
+    );
+
+    expect(order.status).toBe("pending");
+    expect(payment.order.status).toBe("gateway_lease_issued");
+    expect(payment.order.chainGrantStatus).toBe("pending_chain_grant");
+    expect(payment.bridge.expectedGrantFunction).toBe("grantRentalAccess");
+    expect(lookup.accessBridge?.bridgeId).toBe("access-bridge-1");
   });
 
   it("requests wallet export without private key material and migrates wallet", async () => {

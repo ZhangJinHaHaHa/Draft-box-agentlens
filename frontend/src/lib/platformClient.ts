@@ -37,6 +37,34 @@ export interface PlatformAccessBridge {
   gatewayLeaseExpiresAt: string;
 }
 
+export interface PlatformOrder {
+  orderId: string;
+  userId: string;
+  agentId: string;
+  status: "pending" | "gateway_lease_issued" | "failed" | "refunded";
+  amount?: string;
+  currency?: "USD" | "CREDITS";
+  createdAt: string;
+  updatedAt: string;
+  paidAt?: string;
+  paidAmount?: string;
+  gatewayLeaseToken?: string;
+  gatewayLeaseIssuedAt?: string;
+  gatewayLeaseExpiresAt?: string;
+  chainGrantStatus?: "pending_chain_grant";
+}
+
+export interface PlatformMockPaymentCallbackResponse {
+  order: PlatformOrder;
+  bridge: PlatformAccessBridge;
+  idempotentReplay: boolean;
+}
+
+export interface PlatformOrderLookupResponse {
+  order: PlatformOrder;
+  accessBridge: PlatformAccessBridge | null;
+}
+
 export interface WalletExportResponse {
   user: PlatformUser;
   exportReceipt: {
@@ -96,6 +124,39 @@ export async function getPlatformCredits(
 ): Promise<PlatformCreditAccount> {
   const payload = await getJson(apiBaseUrl, `/api/web2/users/${encodeURIComponent(userId)}/credits`, fetchImpl);
   return parseCreditAccount((payload as { creditAccount?: unknown }).creditAccount);
+}
+
+export async function createPlatformOrder(
+  apiBaseUrl: string,
+  input: { userId: string; agentId: string; amount: string; currency?: "USD" | "CREDITS" },
+  fetchImpl: typeof fetch = fetch
+): Promise<PlatformOrder> {
+  const payload = await postJson(apiBaseUrl, "/api/orders", input, fetchImpl);
+  return parsePlatformOrder((payload as { order?: unknown }).order);
+}
+
+export async function submitMockPaymentCallback(
+  apiBaseUrl: string,
+  input: {
+    orderId: string;
+    paymentProvider: string;
+    providerPaymentId: string;
+    idempotencyKey: string;
+    paidAmount: string;
+  },
+  fetchImpl: typeof fetch = fetch
+): Promise<PlatformMockPaymentCallbackResponse> {
+  const payload = await postJson(apiBaseUrl, "/api/payments/mock-callback", input, fetchImpl);
+  return parseMockPaymentCallbackResponse(payload);
+}
+
+export async function getPlatformOrder(
+  apiBaseUrl: string,
+  orderId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<PlatformOrderLookupResponse> {
+  const payload = await getJson(apiBaseUrl, `/api/orders/${encodeURIComponent(orderId)}`, fetchImpl);
+  return parsePlatformOrderLookupResponse(payload);
 }
 
 export async function requestWalletExport(
@@ -241,6 +302,32 @@ function parsePaidLlmRecommendationResponse(payload: unknown): PaidLlmRecommenda
   };
 }
 
+function parseMockPaymentCallbackResponse(payload: unknown): PlatformMockPaymentCallbackResponse {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Mock payment callback response must be an object.");
+  }
+  const record = payload as Record<string, unknown>;
+  if (typeof record.idempotentReplay !== "boolean") {
+    throw new Error("Mock payment callback idempotentReplay flag is required.");
+  }
+  return {
+    order: parsePlatformOrder(record.order),
+    bridge: parseAccessBridge(record.bridge),
+    idempotentReplay: record.idempotentReplay
+  };
+}
+
+function parsePlatformOrderLookupResponse(payload: unknown): PlatformOrderLookupResponse {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Platform order lookup response must be an object.");
+  }
+  const record = payload as Record<string, unknown>;
+  return {
+    order: parsePlatformOrder(record.order),
+    accessBridge: record.accessBridge === null ? null : parseAccessBridge(record.accessBridge)
+  };
+}
+
 function parseWalletExportResponse(payload: unknown): WalletExportResponse {
   if (!payload || typeof payload !== "object") {
     throw new Error("Wallet export response must be an object.");
@@ -256,6 +343,65 @@ function parseWalletExportResponse(payload: unknown): WalletExportResponse {
       receiptId: exportReceipt.receiptId,
       privateKeyMaterial: null
     }
+  };
+}
+
+function parsePlatformOrder(payload: unknown): PlatformOrder {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Platform order must be an object.");
+  }
+  const record = payload as Record<string, unknown>;
+  if (typeof record.orderId !== "string" || record.orderId.trim().length === 0) {
+    throw new Error("Platform order id is required.");
+  }
+  if (typeof record.userId !== "string" || record.userId.trim().length === 0) {
+    throw new Error("Platform order userId is required.");
+  }
+  if (typeof record.agentId !== "string" || record.agentId.trim().length === 0) {
+    throw new Error("Platform order agentId is required.");
+  }
+  if (
+    record.status !== "pending" &&
+    record.status !== "gateway_lease_issued" &&
+    record.status !== "failed" &&
+    record.status !== "refunded"
+  ) {
+    throw new Error("Platform order status is invalid.");
+  }
+  if (record.currency !== undefined && record.currency !== "USD" && record.currency !== "CREDITS") {
+    throw new Error("Platform order currency is invalid.");
+  }
+  if (typeof record.createdAt !== "string" || record.createdAt.trim().length === 0) {
+    throw new Error("Platform order createdAt is required.");
+  }
+  if (typeof record.updatedAt !== "string" || record.updatedAt.trim().length === 0) {
+    throw new Error("Platform order updatedAt is required.");
+  }
+  if (record.chainGrantStatus !== undefined && record.chainGrantStatus !== "pending_chain_grant") {
+    throw new Error("Platform order chain grant status is invalid.");
+  }
+
+  return {
+    orderId: record.orderId.trim(),
+    userId: record.userId.trim(),
+    agentId: record.agentId.trim(),
+    status: record.status,
+    ...(readOptionalString(record, "amount") ? { amount: readOptionalString(record, "amount") } : {}),
+    ...(record.currency ? { currency: record.currency } : {}),
+    createdAt: record.createdAt.trim(),
+    updatedAt: record.updatedAt.trim(),
+    ...(readOptionalString(record, "paidAt") ? { paidAt: readOptionalString(record, "paidAt") } : {}),
+    ...(readOptionalString(record, "paidAmount") ? { paidAmount: readOptionalString(record, "paidAmount") } : {}),
+    ...(readOptionalString(record, "gatewayLeaseToken")
+      ? { gatewayLeaseToken: readOptionalString(record, "gatewayLeaseToken") }
+      : {}),
+    ...(readOptionalString(record, "gatewayLeaseIssuedAt")
+      ? { gatewayLeaseIssuedAt: readOptionalString(record, "gatewayLeaseIssuedAt") }
+      : {}),
+    ...(readOptionalString(record, "gatewayLeaseExpiresAt")
+      ? { gatewayLeaseExpiresAt: readOptionalString(record, "gatewayLeaseExpiresAt") }
+      : {}),
+    ...(record.chainGrantStatus ? { chainGrantStatus: record.chainGrantStatus } : {})
   };
 }
 
@@ -295,6 +441,18 @@ function parseAccessBridge(payload: unknown): PlatformAccessBridge {
     gatewayLeaseIssuedAt: record.gatewayLeaseIssuedAt.trim(),
     gatewayLeaseExpiresAt: record.gatewayLeaseExpiresAt.trim()
   };
+}
+
+function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new Error(`Platform ${key} must be a string.`);
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function parsePlatformAdminInspect(payload: unknown): PlatformAdminInspect {

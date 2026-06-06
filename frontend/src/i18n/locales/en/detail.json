@@ -59,21 +59,36 @@
   "rental": {
     "title": "Rental entry",
     "subtitle": {
-      "native": "Platform-native signals can be shown here, but transaction execution is not connected.",
-      "curated": "This catalog entry keeps official access separate from platform rental."
+      "native": "The local MVP supports Web2 mock rental; on-chain grants still wait for the bridge.",
+      "curated": "The local MVP can create a mock order and Gateway lease for this catalog entry."
     },
     "web2": {
-      "title": "Web2 channel",
-      "action": "Apply access",
-      "configured": "Use the configured order or fiat application endpoint.",
-      "disabledReason": "Order endpoint is not configured."
+      "title": "Web2 local rental",
+      "action": "Create local rental",
+      "externalAction": "Open access form",
+      "creating": "Creating rental",
+      "configured": "Create a mock order, payment callback, and Gateway lease through the Platform API.",
+      "externalConfigured": "Use the configured order or fiat application endpoint.",
+      "disabledReason": "Platform API is not configured, so local rental cannot be created.",
+      "success": "Local rental created",
+      "userLabel": "User",
+      "amountLabel": "Amount",
+      "orderLabel": "Order",
+      "orderStatusLabel": "Order status",
+      "gatewayLeaseLabel": "Gateway lease",
+      "gatewayLeaseExpiresLabel": "Expires",
+      "bridgeLabel": "Bridge",
+      "bridgeStatusLabel": "Chain grant status",
+      "grantPending": "A pending chain-grant record exists; real grantRentalAccess still needs the bridge.",
+      "error": "Local rental failed: {{message}}",
+      "unknownError": "Unknown error"
     },
     "web3": {
       "title": "Web3 channel",
       "action": "On-chain rental",
       "price": "Marketplace price: {{price}}",
-      "disabledReason": "Wallet transaction entry is not connected.",
-      "marketplaceReadOnly": "Marketplace pricing can be displayed, but wallet signing is not implemented."
+      "disabledReason": "Wallet signing and on-chain grantRentalAccess are not connected yet.",
+      "marketplaceReadOnly": "Marketplace pricing can be displayed; real wallet signing and grantRentalAccess are not connected yet."
     }
   },
   "official": {

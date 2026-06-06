@@ -59,21 +59,36 @@
   "rental": {
     "title": "租赁入口",
     "subtitle": {
-      "native": "这里可以展示平台原生信号，但当前未接入真实交易执行。",
-      "curated": "该目录项保留官方访问入口，不伪装成平台可租。"
+      "native": "本地 MVP 支持 Web2 mock 租赁；链上授权仍等待 bridge。",
+      "curated": "本地 MVP 可为目录项创建 mock 订单和 Gateway lease。"
     },
     "web2": {
-      "title": "Web2 通道",
-      "action": "申请访问",
-      "configured": "使用已配置的订单或法币申请入口。",
-      "disabledReason": "订单接口未配置。"
+      "title": "Web2 本地租赁",
+      "action": "创建本地租赁",
+      "externalAction": "打开申请入口",
+      "creating": "正在创建租赁",
+      "configured": "通过 Platform API 创建 mock 订单、支付回调和 Gateway lease。",
+      "externalConfigured": "使用已配置的订单或法币申请入口。",
+      "disabledReason": "Platform API 未配置，无法创建本地租赁。",
+      "success": "本地租赁已创建",
+      "userLabel": "用户",
+      "amountLabel": "金额",
+      "orderLabel": "订单",
+      "orderStatusLabel": "订单状态",
+      "gatewayLeaseLabel": "Gateway lease",
+      "gatewayLeaseExpiresLabel": "到期",
+      "bridgeLabel": "Bridge",
+      "bridgeStatusLabel": "链上授权状态",
+      "grantPending": "已生成 pending chain-grant 记录，真实 grantRentalAccess 仍待 bridge 接入。",
+      "error": "本地租赁失败：{{message}}",
+      "unknownError": "未知错误"
     },
     "web3": {
       "title": "Web3 通道",
       "action": "链上租赁",
       "price": "市场价格：{{price}}",
-      "disabledReason": "钱包交易入口未接入。",
-      "marketplaceReadOnly": "可以展示 marketplace 价格，但尚未实现钱包签名。"
+      "disabledReason": "钱包签名和链上 grantRentalAccess 尚未接入。",
+      "marketplaceReadOnly": "Marketplace 价格可展示；真实钱包签名和 grantRentalAccess 仍未接入。"
     }
   },
   "official": {

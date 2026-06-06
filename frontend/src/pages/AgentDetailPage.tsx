@@ -77,6 +77,7 @@ export function AgentDetailPage({ config }: AgentDetailPageProps): JSX.Element {
         <RentalEntryCard
           entry={entry}
           marketplaceConfigured={Boolean(config.marketplaceAddress)}
+          platformApiUrl={config.platformApiUrl}
           web2RentalUrl={config.rentalWeb2Url}
         />
 
