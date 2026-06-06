@@ -114,22 +114,32 @@ export function ComparePage({ config }: { config: AppConfig }): JSX.Element {
 
       {/* Compare Matrix */}
       <div className="surface-card overflow-x-auto">
-        <table className="w-full min-w-[800px] border-collapse text-sm">
+        <table className="w-full min-w-[920px] table-fixed border-collapse text-sm">
+          <colgroup>
+            <col className="w-44" />
+            {agents.map((agent) => (
+              <col key={agent.id} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
-              <th className="w-48 border-b bg-secondary/30 p-4 text-left font-medium text-muted-foreground"></th>
+              <th className="border-b bg-secondary/30 p-4 text-left text-xs font-medium text-muted-foreground">
+                {t("page.attrs.dimension")}
+              </th>
               {agents.map((agent) => (
-                <th key={agent.id} className="border-b p-4 text-left font-medium relative group">
-                  <div className="flex justify-between items-start">
-                    <Link to={buildPath(`/agent/${agent.id}`)} className="text-lg hover:underline">
-                      {agent.name}
+                <th key={agent.id} className="group relative border-b bg-card/45 p-4 text-left align-top font-medium">
+                  <div className="flex min-h-12 items-start gap-2 pr-7">
+                    <Link to={buildPath(`/agent/${agent.id}`)} className="min-w-0 flex-1 text-base font-semibold leading-snug text-foreground hover:underline">
+                      <span>{agent.name}</span>
                       {agent.id === result.winnerId && (
-                        <CheckCircle2 className="inline ml-2 w-4 h-4 text-green-500 mb-1" />
+                        <CheckCircle2 className="ml-2 inline h-4 w-4 shrink-0 align-[-2px] text-green-500" aria-hidden />
                       )}
                     </Link>
                     <button
+                      type="button"
+                      aria-label={t("page.removeAgent", { name: agent.name })}
                       onClick={() => removeId(agent.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-3 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus:opacity-100 group-hover:opacity-100"
                     >
                       <X className="w-4 h-4" />
                     </button>

@@ -23,6 +23,7 @@
     "emptyDesc": "请至少选择 2 个 Agent 进行对比",
     "clear": "清空对比",
     "back": "返回目录",
+    "removeAgent": "移除 {{name}}",
     "limit": "仅展示前 4 个 Agent；请从 URL 或对比清单中移除多余项。",
     "conclusion": "对比结论",
     "winner": "推荐选择",
@@ -33,6 +34,7 @@
       "manual-judgment": "需要人工判断：指标相近，建议根据具体场景自行判断"
     },
     "attrs": {
+      "dimension": "对比维度",
       "scenario": "适用场景",
       "unsuitableScenario": "不适用场景",
       "seller": "背后卖家",

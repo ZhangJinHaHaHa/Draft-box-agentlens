@@ -23,6 +23,7 @@
     "emptyDesc": "Please select at least 2 agents to compare",
     "clear": "Clear compare",
     "back": "Back to Directory",
+    "removeAgent": "Remove {{name}}",
     "limit": "Only the first 4 agents are shown; remove extras from the URL or the compare list.",
     "conclusion": "Conclusion",
     "winner": "Recommended",
@@ -33,6 +34,7 @@
       "manual-judgment": "Manual Judgment: Similar metrics, please evaluate based on your use case."
     },
     "attrs": {
+      "dimension": "Dimension",
       "scenario": "Scenarios",
       "unsuitableScenario": "Unsuitable",
       "seller": "Seller behind it",
