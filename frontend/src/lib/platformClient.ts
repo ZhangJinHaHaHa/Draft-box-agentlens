@@ -30,8 +30,11 @@ export interface PlatformMockGoogleLoginResponse {
 export interface PlatformAccessBridge {
   bridgeId: string;
   orderId: string;
-  status: "queued" | "submitted" | "confirmed" | "failed";
-  chainAccessTxHash?: string;
+  status: "pending_chain_grant" | "failed";
+  expectedGrantFunction: "grantRentalAccess";
+  gatewayLeaseToken: string;
+  gatewayLeaseIssuedAt: string;
+  gatewayLeaseExpiresAt: string;
 }
 
 export interface WalletExportResponse {
@@ -267,23 +270,30 @@ function parseAccessBridge(payload: unknown): PlatformAccessBridge {
   if (typeof record.orderId !== "string" || record.orderId.trim().length === 0) {
     throw new Error("Access bridge orderId is required.");
   }
-  if (
-    record.status !== "queued" &&
-    record.status !== "submitted" &&
-    record.status !== "confirmed" &&
-    record.status !== "failed"
-  ) {
+  if (record.status !== "pending_chain_grant" && record.status !== "failed") {
     throw new Error("Access bridge status is invalid.");
   }
-  if (record.chainAccessTxHash !== undefined && typeof record.chainAccessTxHash !== "string") {
-    throw new Error("Access bridge chain tx hash must be a string.");
+  if (record.expectedGrantFunction !== "grantRentalAccess") {
+    throw new Error("Access bridge expected grant function is invalid.");
+  }
+  if (typeof record.gatewayLeaseToken !== "string" || record.gatewayLeaseToken.trim().length === 0) {
+    throw new Error("Access bridge Gateway lease token is required.");
+  }
+  if (typeof record.gatewayLeaseIssuedAt !== "string" || record.gatewayLeaseIssuedAt.trim().length === 0) {
+    throw new Error("Access bridge Gateway lease issued timestamp is required.");
+  }
+  if (typeof record.gatewayLeaseExpiresAt !== "string" || record.gatewayLeaseExpiresAt.trim().length === 0) {
+    throw new Error("Access bridge Gateway lease expiry timestamp is required.");
   }
 
   return {
     bridgeId: record.bridgeId.trim(),
     orderId: record.orderId.trim(),
     status: record.status,
-    chainAccessTxHash: record.chainAccessTxHash
+    expectedGrantFunction: record.expectedGrantFunction,
+    gatewayLeaseToken: record.gatewayLeaseToken.trim(),
+    gatewayLeaseIssuedAt: record.gatewayLeaseIssuedAt.trim(),
+    gatewayLeaseExpiresAt: record.gatewayLeaseExpiresAt.trim()
   };
 }
 

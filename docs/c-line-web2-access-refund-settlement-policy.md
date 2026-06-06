@@ -4,7 +4,7 @@ Date: 2026-06-06
 
 ## Current Decisions
 
-1. Web2 access bridge uses option 1 from the team plan: after an order becomes `paid`, the platform operator wallet writes access on chain for the user.
+1. Web2 access uses option A from PR review: after payment, the platform issues a Gateway lease immediately and records `pending_chain_grant` for later B/C bridge processing.
 2. Google account login is allowed as the first Web2 identity path.
 3. Web2 wallets use a backend-custodied model with user-controlled export / migration.
 4. Refunds are reserved for severe incidents, reproducible core-capability failures, and platform/agent-side delivery failures.
@@ -21,7 +21,7 @@ Recommended MVP flow:
    - risk flags
 3. Backend creates a wallet for the user.
 4. The wallet address is attached to the platform user and used for `hasAccess`.
-5. After order `paid`, the operator wallet writes access for that user wallet.
+5. After payment, the platform issues a Gateway lease for that user; the user can access the Agent through the platform while the chain grant remains pending.
 
 Security rule:
 
@@ -53,30 +53,31 @@ Initial weight:
 Trigger:
 
 ```text
-order.status: pending -> paid
+order.status: pending -> gateway_lease_issued
+order.chainGrantStatus: pending_chain_grant
 ```
 
 Bridge action:
 
 ```text
-operatorWallet.grantAccess(userWalletAddress, agentId)
+wait for B/C bridge grantRentalAccess(tokenId, buyer, expiresAt, orderIdHash, amountPaid)
 ```
 
 The bridge must be idempotent:
 
-- one order can record only one chain access tx hash
-- retry is allowed when the tx is missing or failed
-- duplicate paid callbacks must not write duplicate access events
+- one order can record only one Gateway lease and pending chain-grant bridge
+- retry/submit/confirm are blocked locally until `grantRentalAccess(...)` exists
+- duplicate payment callbacks must not issue duplicate Gateway leases or bridge records
 
 Local foundation:
 
 - `sandbox/src/platform/web2Wallet.ts` defines Google-backed wallet creation, export and migration rules.
-- `sandbox/src/platform/accessBridge.ts` defines queued/submitted/confirmed/failed access bridge requests.
-- `POST /api/payments/mock-callback` marks an order paid through an idempotent local payment callback.
+- `sandbox/src/platform/accessBridge.ts` defines `pending_chain_grant` / `failed` access bridge requests.
+- `POST /api/payments/mock-callback` moves an order to `gateway_lease_issued` through an idempotent local payment callback.
 - Local payment callback replay returns the existing access bridge instead of creating a duplicate.
 - Local Platform API exposes bridge query, submit, confirm, fail and retry endpoints.
 - Platform API state persists locally so access bridge requests survive restart.
-- These are dry-run state models only; real operator wallet writes remain behind B-line contract confirmation.
+- Submit, confirm and retry return `501` until B/C bridge adds `grantRentalAccess(...)`; no operator calls `rentAgent`, because `rentAgent` grants access to `msg.sender`.
 
 ## Refund Categories
 
@@ -169,7 +170,7 @@ Security incident rule:
 
 Local foundation:
 
-- `sandbox/src/platform/settlementLedger.ts` creates one settlement entry when an order becomes `paid`.
+- `sandbox/src/platform/settlementLedger.ts` creates one settlement entry when an order becomes `gateway_lease_issued`.
 - Local settlement entries calculate platform fee, developer share, holdback and payable amount.
 - Developer summary is available through `GET /api/settlements/developers/:developerId/summary`.
 - Refund review freezes settlement; approved or partial refunds mark settlement as refunded.
@@ -177,6 +178,6 @@ Local foundation:
 
 Open decisions:
 
-- Exact operator wallet custody model.
+- Exact B/C bridge operator permissions and confirmation strategy.
 - Refund SLA duration.
 - Whether high-trust Agents get lower holdback.

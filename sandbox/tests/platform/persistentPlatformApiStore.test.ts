@@ -79,10 +79,6 @@ test("createPersistentPlatformApiStore reloads developer, bridge and settlement 
       idempotencyKey: "idem-1",
       paidAmount: "20.00"
     });
-    firstStore.submitAccessBridge(paid.bridge.bridgeId, {
-      chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    });
-    firstStore.confirmAccessBridge(paid.bridge.bridgeId);
 
     const reloadedStore = createPersistentPlatformApiStore({
       stateDir,
@@ -94,7 +90,8 @@ test("createPersistentPlatformApiStore reloads developer, bridge and settlement 
     const inspect = reloadedStore.inspect();
 
     assert.equal(reloadedDeveloper.developer.developerId, developer.developerId);
-    assert.equal(bridge.status, "confirmed");
+    assert.equal(bridge.status, "pending_chain_grant");
+    assert.equal(bridge.expectedGrantFunction, "grantRentalAccess");
     assert.equal(settlement.developerId, developer.developerId);
     assert.equal(inspect.snapshot.developerProfiles, 1);
     assert.equal(inspect.snapshot.settlements, 1);
@@ -128,10 +125,6 @@ test("createPersistentPlatformApiStore reloads usage reviews", async () => {
       idempotencyKey: "idem-1",
       paidAmount: "20.00"
     });
-    firstStore.submitAccessBridge(paid.bridge.bridgeId, {
-      chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    });
-    firstStore.confirmAccessBridge(paid.bridge.bridgeId);
     const review = firstStore.submitUsageReview({
       orderId: order.orderId,
       userId: user.platformUserId,

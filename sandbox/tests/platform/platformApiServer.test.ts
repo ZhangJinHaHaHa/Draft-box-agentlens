@@ -109,7 +109,7 @@ test("platform API creates a Google-backed exportable wallet", async () => {
   assert.equal(creditAccount.balance, 100);
 });
 
-test("platform API creates order and auto-queues access bridge after paid", async () => {
+test("platform API creates order, issues Gateway lease, and queues pending chain grant after payment", async () => {
   const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
   const user = await createGoogleUser(store);
   const orderResponse = await callApi(store, "POST", "/api/orders", {
@@ -127,8 +127,11 @@ test("platform API creates order and auto-queues access bridge after paid", asyn
   const bridge = paidResponse.body.bridge as Record<string, unknown>;
 
   assert.equal(paidResponse.statusCode, 200);
-  assert.equal(paidOrder.status, "paid");
-  assert.equal(bridge.status, "queued");
+  assert.equal(paidOrder.status, "gateway_lease_issued");
+  assert.equal(paidOrder.chainGrantStatus, "pending_chain_grant");
+  assert.match(paidOrder.gatewayLeaseToken as string, /^gateway-lease-[0-9a-f]{32}$/);
+  assert.equal(bridge.status, "pending_chain_grant");
+  assert.equal(bridge.expectedGrantFunction, "grantRentalAccess");
   assert.equal(bridge.orderId, order.orderId);
   assert.equal(bridge.userWalletAddress, user.walletAddress);
 });
@@ -246,53 +249,50 @@ test("platform API keeps design mismatch as non-refundable review path", async (
   assert.equal((resolveResponse.body.refund as Record<string, unknown>).status, "rejected");
 });
 
-test("platform API supports access bridge submit, fail, retry and confirm", async () => {
+test("platform API keeps chain grant pending until grantRentalAccess bridge is available", async () => {
   const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
   const order = await createPaidOrder(store);
   const orderResponse = await callApi(store, "GET", `/api/orders/${order.orderId}`);
   const bridge = orderResponse.body.accessBridge as Record<string, unknown>;
 
-  const submitted = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
-    chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  });
-  const failed = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/fail`, {
-    failureReason: "operator wallet unavailable"
-  });
-  const retried = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/retry`, {
-    chainAccessTxHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-  });
+  const submitted = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`);
+  const retried = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/retry`);
   const confirmed = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/confirm`);
-  const resubmit = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
-    chainAccessTxHash: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  const failed = await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/fail`, {
+    failureReason: "grantRentalAccess bridge unavailable"
   });
 
-  assert.equal(submitted.statusCode, 200);
-  assert.equal((submitted.body.accessBridge as Record<string, unknown>).status, "submitted");
+  assert.equal(bridge.status, "pending_chain_grant");
+  assert.equal(submitted.statusCode, 501);
+  assert.match(submitted.body.error as string, /grantRentalAccess/);
+  assert.equal(retried.statusCode, 501);
+  assert.match(retried.body.error as string, /grantRentalAccess/);
+  assert.equal(confirmed.statusCode, 501);
+  assert.match(confirmed.body.error as string, /grantRentalAccess/);
   assert.equal((failed.body.accessBridge as Record<string, unknown>).status, "failed");
-  assert.equal((retried.body.accessBridge as Record<string, unknown>).status, "submitted");
-  assert.equal((confirmed.body.accessBridge as Record<string, unknown>).status, "confirmed");
-  assert.equal(resubmit.statusCode, 400);
-  assert.match(resubmit.body.error as string, /Cannot submit/);
 });
 
-test("platform API accepts one usage review after paid access is confirmed", async () => {
+test("platform API accepts one usage review after Gateway lease is issued", async () => {
   const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
-  const order = await createPaidOrder(store);
-  const orderResponse = await callApi(store, "GET", `/api/orders/${order.orderId}`);
-  const bridge = orderResponse.body.accessBridge as Record<string, unknown>;
+  const user = await createGoogleUser(store);
+  const orderResponse = await callApi(store, "POST", "/api/orders", {
+    userId: user.platformUserId,
+    agentId: "dify",
+    amount: "20.00",
+    currency: "CREDITS"
+  });
+  const pendingOrder = orderResponse.body.order as Record<string, unknown>;
   const prematureReview = await callApi(store, "POST", "/api/reviews", {
-    orderId: order.orderId,
-    userId: order.userId,
+    orderId: pendingOrder.orderId,
+    userId: user.platformUserId,
     overallRating: 5
   });
 
-  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
-    chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  });
-  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/confirm`);
+  const paidResponse = await callApi(store, "POST", `/api/orders/${pendingOrder.orderId}/mark-paid`);
+  const order = paidResponse.body.order as Record<string, unknown>;
   const reviewResponse = await callApi(store, "POST", "/api/reviews", {
     orderId: order.orderId,
-    userId: order.userId,
+    userId: user.platformUserId,
     overallRating: 5,
     dimensionRatings: {
       security: 2,
@@ -308,7 +308,7 @@ test("platform API accepts one usage review after paid access is confirmed", asy
   });
   const duplicateReview = await callApi(store, "POST", "/api/reviews", {
     orderId: order.orderId,
-    userId: order.userId,
+    userId: user.platformUserId,
     overallRating: 4
   });
   const summaryResponse = await callApi(store, "GET", "/api/reviews/agents/dify/summary");
@@ -321,7 +321,8 @@ test("platform API accepts one usage review after paid access is confirmed", asy
   const reputationSignals = reputation.signals as Record<string, unknown>;
 
   assert.equal(prematureReview.statusCode, 400);
-  assert.match(prematureReview.body.error as string, /confirmed access/);
+  assert.match(prematureReview.body.error as string, /Gateway lease/);
+  assert.equal(order.status, "gateway_lease_issued");
   assert.equal(reviewResponse.statusCode, 201);
   assert.match(review.commentHash as string, /^0x[0-9a-f]{64}$/);
   assert.equal(summary.reviewCount, 1);
@@ -331,18 +332,14 @@ test("platform API accepts one usage review after paid access is confirmed", asy
   assert.equal((orderReviewResponse.body.review as Record<string, unknown>).reviewId, review.reviewId);
   assert.equal(reputationSignals.reviewCount, 1);
   assert.equal(reputationSignals.platformRating, 100);
+  assert.equal(reputationSignals.gatewayLeasesIssued, 1);
+  assert.equal(reputationSignals.pendingChainGrants, 1);
   assert.equal(duplicateReview.statusCode, 409);
 });
 
 test("platform API recommendation catalog uses local review and reputation signals", async () => {
   const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
   const order = await createPaidOrder(store);
-  const orderResponse = await callApi(store, "GET", `/api/orders/${order.orderId}`);
-  const bridge = orderResponse.body.accessBridge as Record<string, unknown>;
-  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
-    chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  });
-  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/confirm`);
   await callApi(store, "POST", "/api/reviews", {
     orderId: order.orderId,
     userId: order.userId,
@@ -354,7 +351,7 @@ test("platform API recommendation catalog uses local review and reputation signa
     | {
         platformRating?: number;
         paidOrders?: number;
-        accessBridgeSuccessRate?: number;
+        gatewayLeaseIssuedRate?: number;
       }
     | undefined;
   const response = await callApi(
@@ -382,7 +379,7 @@ test("platform API recommendation catalog uses local review and reputation signa
   assert.equal(response.statusCode, 200);
   assert.equal(capturedDifySignals?.platformRating, 100);
   assert.equal(capturedDifySignals?.paidOrders, 1);
-  assert.equal(capturedDifySignals?.accessBridgeSuccessRate, 1);
+  assert.equal(capturedDifySignals?.gatewayLeaseIssuedRate, 1);
 });
 
 test("platform API exposes wallet export and migration flows without private key material", async () => {
@@ -462,11 +459,7 @@ test("platform API links developers, creates settlement entries and exposes loca
     idempotencyKey: "idem-1",
     paidAmount: "20.00"
   });
-  const bridge = paid.body.bridge as Record<string, unknown>;
-  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
-    chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  });
-  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/confirm`);
+  assert.equal((paid.body.order as Record<string, unknown>).status, "gateway_lease_issued");
 
   const settlementResponse = await callApi(store, "GET", `/api/settlements/orders/${order.orderId}`);
   const summaryResponse = await callApi(store, "GET", `/api/settlements/developers/${developer.developerId}/summary`);

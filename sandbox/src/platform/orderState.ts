@@ -1,5 +1,6 @@
-export type PlatformOrderStatus = "pending" | "paid" | "failed" | "refunded";
+export type PlatformOrderStatus = "pending" | "gateway_lease_issued" | "failed" | "refunded";
 export type PlatformOrderCurrency = "USD" | "CREDITS";
+export type ChainGrantStatus = "pending_chain_grant";
 
 export interface PlatformOrder {
   orderId: string;
@@ -17,12 +18,15 @@ export interface PlatformOrder {
   paidAmount?: string;
   refundedAt?: string;
   failureReason?: string;
-  chainAccessTxHash?: string;
+  gatewayLeaseToken?: string;
+  gatewayLeaseIssuedAt?: string;
+  gatewayLeaseExpiresAt?: string;
+  chainGrantStatus?: ChainGrantStatus;
 }
 
 const ALLOWED_TRANSITIONS: Record<PlatformOrderStatus, PlatformOrderStatus[]> = {
-  pending: ["paid", "failed"],
-  paid: ["refunded"],
+  pending: ["gateway_lease_issued", "failed"],
+  gateway_lease_issued: ["refunded"],
   failed: [],
   refunded: []
 };
@@ -55,34 +59,21 @@ export function transitionOrderStatus(
     ...order,
     status: to,
     updatedAt: at,
-    ...(to === "paid" ? { paidAt: at } : {}),
+    ...(to === "gateway_lease_issued" ? { paidAt: at, gatewayLeaseIssuedAt: at } : {}),
     ...(to === "failed" && details.failureReason ? { failureReason: details.failureReason } : {}),
     ...(to === "refunded" ? { refundedAt: at } : {})
   };
 }
 
-export function assertOrderReadyForAccessBridge(order: PlatformOrder): void {
-  if (order.status !== "paid") {
-    throw new Error(`Order "${order.orderId}" must be paid before access can be bridged.`);
-  }
-  if (order.chainAccessTxHash) {
-    throw new Error(`Order "${order.orderId}" already has a chain access transaction.`);
-  }
+export function isGatewayLeaseIssued(order: PlatformOrder): boolean {
+  return order.status === "gateway_lease_issued";
 }
 
-export function markOrderAccessBridged(
-  order: PlatformOrder,
-  chainAccessTxHash: string,
-  at: string
-): PlatformOrder {
-  assertOrderReadyForAccessBridge(order);
-  if (!/^0x[0-9a-fA-F]{64}$/.test(chainAccessTxHash)) {
-    throw new Error("chainAccessTxHash must be a 32-byte transaction hash.");
+export function assertOrderReadyForAccessBridge(order: PlatformOrder): void {
+  if (!isGatewayLeaseIssued(order)) {
+    throw new Error(`Order "${order.orderId}" must have a Gateway lease before chain grant can be queued.`);
   }
-
-  return {
-    ...order,
-    chainAccessTxHash,
-    updatedAt: at
-  };
+  if (order.chainGrantStatus && order.chainGrantStatus !== "pending_chain_grant") {
+    throw new Error(`Order "${order.orderId}" has an unsupported chain grant status.`);
+  }
 }

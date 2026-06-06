@@ -268,7 +268,7 @@ function computeTrustScore(entry: RecommendationCatalogEntry): number {
     if (signals.reputationScore !== undefined) score += normalizeSignalScore(signals.reputationScore) * 0.18;
     if (signals.paidOrders !== undefined) score += Math.min(signals.paidOrders, 20) * 0.5;
     if (signals.auditCount !== undefined) score += Math.min(signals.auditCount, 10);
-    if (signals.accessBridgeSuccessRate !== undefined) score += clamp(signals.accessBridgeSuccessRate, 0, 1) * 8;
+    if (signals.gatewayLeaseIssuedRate !== undefined) score += clamp(signals.gatewayLeaseIssuedRate, 0, 1) * 8;
     if (signals.refundRate !== undefined) score -= clamp(signals.refundRate, 0, 1) * 28;
     if (signals.developerTrustStatus === "verified") score += 10;
     if (signals.developerTrustStatus === "suspended") score -= 35;
@@ -283,7 +283,7 @@ function computeRiskScore(entry: RecommendationCatalogEntry): number {
   if (entry.hasAuditEvidence) score -= 8;
   const signals = entry.platformSignals;
   if (signals?.refundRate !== undefined) score += clamp(signals.refundRate, 0, 1) * 35;
-  if (signals?.accessBridgeSuccessRate !== undefined) score -= clamp(signals.accessBridgeSuccessRate, 0, 1) * 6;
+  if (signals?.gatewayLeaseIssuedRate !== undefined) score -= clamp(signals.gatewayLeaseIssuedRate, 0, 1) * 6;
   if (signals?.developerTrustStatus === "suspended") score += 20;
   return Math.round(clamp(score, 0, 100));
 }

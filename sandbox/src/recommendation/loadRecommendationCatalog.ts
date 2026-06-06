@@ -99,8 +99,8 @@ function readPlatformSignals(value: unknown): RecommendationPlatformSignals | un
     ...(readOptionalNumber(record.refundRate, "refundRate") !== undefined
       ? { refundRate: readOptionalNumber(record.refundRate, "refundRate") }
       : {}),
-    ...(readOptionalNumber(record.accessBridgeSuccessRate, "accessBridgeSuccessRate") !== undefined
-      ? { accessBridgeSuccessRate: readOptionalNumber(record.accessBridgeSuccessRate, "accessBridgeSuccessRate") }
+    ...(readOptionalNumber(record.gatewayLeaseIssuedRate, "gatewayLeaseIssuedRate") !== undefined
+      ? { gatewayLeaseIssuedRate: readOptionalNumber(record.gatewayLeaseIssuedRate, "gatewayLeaseIssuedRate") }
       : {}),
     ...(readOptionalNumber(record.auditCount, "auditCount") !== undefined
       ? { auditCount: readOptionalNumber(record.auditCount, "auditCount") }

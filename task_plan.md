@@ -11,7 +11,7 @@ Build the C-line local MVP into a complete demoable middleware loop without real
 1. Mock Web2 user creation.
 2. Platform credits and paid LLM recommendation.
 3. Order creation and idempotent payment callback.
-4. Access bridge lifecycle.
+4. Gateway lease issuance and pending chain-grant bridge record.
 5. Exportable/migratable wallet HTTP surface.
 6. Refund evidence and responsibility classification.
 7. Developer profile, settlement ledger and local reputation read adapter.
@@ -42,7 +42,7 @@ MVP-2: complete locally.
 - Frontend paid LLM recommendation UI exists.
 - Order state machine exists.
 - Mock payment callback is idempotent.
-- Access bridge lifecycle API exists.
+- Access bridge read/fail API exists; submit/confirm/retry are held at `501` until B/C bridge adds `grantRentalAccess(...)`.
 - Platform API state persists to local JSON.
 - Refund evidence and review state machine exist.
 
@@ -84,7 +84,7 @@ Validation:
 - Duplicate callback returns the same bridge.
 - Conflicting callback returns `409`.
 
-### Phase 4: Access Bridge Lifecycle API
+### Phase 4: Gateway Lease And Chain-Grant Bridge API
 
 Status: complete
 
@@ -98,10 +98,10 @@ Implemented:
 
 Validation:
 
-- `queued -> submitted -> confirmed`
-- `queued/submitted -> failed`
-- `failed -> submitted`
-- `confirmed` cannot be resubmitted.
+- payment callback moves order to `gateway_lease_issued`
+- bridge records `pending_chain_grant`
+- fail can mark the pending bridge failed
+- submit/retry/confirm return `501` until `grantRentalAccess(...)` is available.
 
 ### Phase 5: Wallet Export and Migration HTTP API
 
@@ -161,7 +161,7 @@ Status: complete
 
 Implemented:
 
-- Settlement entry is created when order becomes paid.
+- Settlement entry is created when order becomes `gateway_lease_issued`.
 - Platform fee: 20%.
 - Developer share: 80%.
 - Holdback: 10% of developer share.
@@ -172,7 +172,7 @@ Implemented:
 
 Validation:
 
-- Paid order creates settlement entry.
+- Gateway-lease-issued order creates settlement entry.
 - Developer summary returns payable/holdback totals.
 - Refund review freezes settlement.
 - Approved/partial refund marks settlement refunded.
@@ -189,7 +189,7 @@ Implemented:
 
 Validation:
 
-- Reputation snapshots include paid orders, confirmed bridges, refunds, severe refunds and developer trust score.
+- Reputation snapshots include paid orders, Gateway leases issued, pending chain grants, refunds, severe refunds and developer trust score.
 
 ### Phase 10: Platform Admin Inspect API
 
@@ -220,7 +220,7 @@ Smoke covers:
 - paid LLM recommendation
 - order create
 - idempotent payment callback
-- bridge submit/confirm
+- Gateway lease issuance and pending chain-grant bridge record
 - wallet export/migration
 - refund evidence path
 - settlement/reputation/admin inspect
@@ -238,9 +238,10 @@ npm run build
 
 Current known validation:
 
-- Sandbox: 745 tests passing.
-- Frontend: 92 tests passing.
-- Platform MVP HTTP smoke: passing.
+- Sandbox: 754 tests passing.
+- Frontend: 93 tests passing.
+- Frontend build: passing with the existing large chunk warning.
+- Platform MVP HTTP smoke: not rerun in this sandbox because local port listening was blocked.
 
 ## Explicit Non-Goals
 
@@ -248,7 +249,7 @@ Current known validation:
 - Do not integrate real payment providers.
 - Do not generate, store, display, or export real private keys.
 - Do not connect KMS/custody provider.
-- Do not write real operator wallet chain transactions.
+- Do not write real B/C bridge chain-grant transactions.
 - Do not mark PR #1 ready.
 
 ## Remaining Work After This MVP

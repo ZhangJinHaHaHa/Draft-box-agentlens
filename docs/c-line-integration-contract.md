@@ -8,7 +8,7 @@ PR: draft PR #1
 
 C-line has completed a local MVP loop for the independently buildable middleware slice.
 
-This PR does not integrate real Google OAuth, real payment providers, real KMS/private keys, real operator-wallet chain writes or real payout providers. It only provides local mock/adapter boundaries so A-line, B-line and product/security can align interfaces before production integration.
+This PR does not integrate real Google OAuth, real payment providers, real KMS/private keys, real B/C bridge chain grants or real payout providers. It only provides local mock/adapter boundaries so A-line, B-line and product/security can align interfaces before production integration.
 
 Current local loop:
 
@@ -18,7 +18,8 @@ mock Google user
 -> paid LLM recommendation
 -> order creation
 -> idempotent payment callback
--> access bridge submit/confirm
+-> platform Gateway lease issuance
+-> pending chain-grant bridge record
 -> wallet export/migration mock flow
 -> refund evidence review
 -> settlement ledger
@@ -119,7 +120,7 @@ Payment callback request:
 Rules:
 
 - The callback is idempotent by `idempotencyKey`.
-- Replaying the same callback returns the same paid order and access bridge.
+- Replaying the same callback returns the same Gateway-lease-issued order and access bridge.
 - Reusing the same key with conflicting payment data returns `409`.
 - Real payment webhook signature verification is not implemented yet.
 
@@ -136,32 +137,33 @@ POST /api/access-bridges/:bridgeId/retry
 Local state flow:
 
 ```text
-queued -> submitted -> confirmed
-queued/submitted -> failed
-failed -> submitted
+pending_chain_grant -> failed
 ```
 
-This is the main contract with B-line. C-line currently uses mock transaction hashes. Production should replace this with a chain-write adapter.
+This is the main contract with B-line. C-line does not submit mock transaction hashes anymore, because the current contract does not expose `grantAccess` and `rentAgent(tokenId, durationDays)` must remain buyer-wallet-only. The local bridge records that platform access is already available through the Gateway lease while the chain grant waits for the B/C bridge function.
 
-Recommended adapter shape for discussion:
+Expected future adapter shape:
 
 ```ts
-grantAccess(input: {
+grantRentalAccess(input: {
+  tokenId: bigint;
   userWalletAddress: string;
+  expiresAt: bigint;
   agentId: string;
   orderId: string;
   bridgeId: string;
-}): Promise<{ chainAccessTxHash: string }>;
+  amountPaid: string;
+}): Promise<{ chainGrantTxHash: string }>;
 ```
 
 B-line needs to confirm:
 
-- contract function name and arguments
-- access-granted event fields
-- operator wallet permissions
+- `grantRentalAccess(uint256 tokenId, address buyer, uint64 expiresAt, bytes32 orderIdHash, uint256 amountPaid)`
+- rental-granted event fields
+- `onlyOperator` permissions
 - whether `orderId` or `bridgeId` should be recorded on chain
 - on-chain idempotency or duplicate-write behavior
-- confirmation strategy for C-line to move bridge to `confirmed`
+- confirmation strategy for C-line to clear or finalize `pending_chain_grant`
 
 ### Refund Evidence
 
@@ -274,7 +276,7 @@ Do not treat this PR as production-ready for:
 - real Google OAuth
 - real payment webhook verification
 - real KMS/custody/private-key export
-- real operator wallet chain writes
+- real B/C bridge chain grants
 - real payout and production settlement
 - real FARR dynamic read service
 
@@ -287,7 +289,7 @@ Keep PR #1 as draft until the team confirms the integration contracts above.
 Recommended flow:
 
 1. Share this document in the team group.
-2. Ask B-line to confirm the access-grant contract/event and operator-wallet flow.
+2. Ask B-line to confirm the `grantRentalAccess` contract/event and `onlyOperator` flow.
 3. Ask A-line whether to build a minimal Platform Console from the existing endpoints.
 4. Ask product/security to confirm refund and settlement rules.
 5. After those decisions, either:

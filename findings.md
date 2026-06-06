@@ -24,12 +24,12 @@ The C-line local MVP now has three cooperating layers:
   - local FARR/reputation read adapter
   - admin inspect
 
-This keeps the demo local and reviewable while preserving clear seams for later real Google OAuth, payment providers, KMS/custody and chain writes.
+This keeps the demo local and reviewable while preserving clear boundaries for later real Google OAuth, payment providers, KMS/custody and B/C bridge chain grants.
 
 ## Current C-line Design Decisions
 
-- Web2 access bridge strategy remains option 1: after an order becomes `paid`, the platform operator wallet will eventually write access on chain.
-- Current implementation stops at local access bridge lifecycle; no real chain write occurs.
+- Web2 access bridge strategy follows PR review option A: after payment, the platform issues a Gateway lease and records `pending_chain_grant` for later B/C bridge processing.
+- Current implementation does not submit a chain grant; submit/retry/confirm wait for `grantRentalAccess(...)`.
 - Google login remains local mock only.
 - Wallet model is backend-custodied, exportable and migratable.
 - Mock wallet export returns a receipt with `privateKeyMaterial: null`.
@@ -37,7 +37,7 @@ This keeps the demo local and reviewable while preserving clear seams for later 
 - LLM recommendation costs `3` credits.
 - Mock Google users start with `100` credits.
 - Payment callbacks are keyed by `idempotencyKey`.
-- Duplicate callbacks return the existing paid order and bridge.
+- Duplicate callbacks return the existing Gateway-lease-issued order and bridge.
 - Conflicting callbacks with the same idempotency key return `409`.
 - Refunds are reserved for severe/platform/security/core-capability failures.
 - Core capability failure requires expected/actual evidence.
@@ -79,22 +79,23 @@ Important limits:
 - Real payment provider is not wired.
 - Real KMS/custody provider is not wired.
 - Real private keys are not generated or exposed.
-- Real operator wallet chain write is not wired.
+- Real B/C bridge chain grant is not wired.
 - FARR is local derived data, not a real chain/service read.
 
 ## Verification Findings
 
 Passing baseline:
 
-- `sandbox npm test`: 745 tests passing.
-- `frontend npm test`: 92 tests passing.
-- Platform MVP HTTP smoke: passing.
+- `npm test --prefix sandbox -- platform/orderState.test.ts platform/accessBridge.test.ts platform/platformApiServer.test.ts platform/persistentPlatformApiStore.test.ts recommendation/recommendationService.test.ts`: 754 tests passing.
+- `npm test --prefix frontend`: 93 tests passing.
+- `npm run build --prefix frontend`: passing with the existing large chunk warning.
+- Platform MVP HTTP smoke: not rerun in this sandbox because local port listening was blocked.
 
-Smoke proved:
+The smoke script now checks:
 
 - paid recommendation charges credits and leaves balance `97`
 - payment callback replay is idempotent
-- access bridge can reach `confirmed`
+- access bridge remains `pending_chain_grant` while Gateway lease access is available
 - wallet can move to `external_migrated`
 - refund evidence path resolves to `partial_refund`
 - settlement resolves developer profile

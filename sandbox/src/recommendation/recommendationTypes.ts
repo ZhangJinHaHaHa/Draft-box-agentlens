@@ -15,7 +15,7 @@ export interface RecommendationPlatformSignals {
   reputationScore?: number;
   paidOrders?: number;
   refundRate?: number;
-  accessBridgeSuccessRate?: number;
+  gatewayLeaseIssuedRate?: number;
   developerTrustStatus?: "unverified" | "verified" | "suspended";
   auditCount?: number;
 }

@@ -202,8 +202,11 @@ describe("platformClient", () => {
             accessBridge: {
               bridgeId: "access-bridge-1",
               orderId: "order-1",
-              status: "confirmed",
-              chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              status: "pending_chain_grant",
+              expectedGrantFunction: "grantRentalAccess",
+              gatewayLeaseToken: "gateway-lease-1",
+              gatewayLeaseIssuedAt: "2026-06-05T00:00:00.000Z",
+              gatewayLeaseExpiresAt: "2026-07-05T00:00:00.000Z"
             }
           }),
           { status: 200 }
@@ -232,7 +235,8 @@ describe("platformClient", () => {
       }
     );
 
-    expect(bridge.status).toBe("confirmed");
+    expect(bridge.status).toBe("pending_chain_grant");
+    expect(bridge.expectedGrantFunction).toBe("grantRentalAccess");
     expect(inspect.snapshot.settlements).toBe(1);
   });
 });

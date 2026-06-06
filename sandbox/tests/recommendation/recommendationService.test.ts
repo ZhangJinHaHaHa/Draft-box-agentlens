@@ -116,7 +116,7 @@ test("platform signals strengthen trust metadata for uploaded agents", () => {
           reputationScore: 880,
           paidOrders: 12,
           refundRate: 0.02,
-          accessBridgeSuccessRate: 0.98,
+          gatewayLeaseIssuedRate: 0.98,
           developerTrustStatus: "verified",
           auditCount: 3
         }

@@ -1,5 +1,4 @@
-import type { AccessBridgeRequest } from "./accessBridge";
-import type { PlatformOrder } from "./orderState";
+import { isGatewayLeaseIssued, type PlatformOrder } from "./orderState";
 import type { RefundCase } from "./refundPolicy";
 
 export type SettlementStatus = "pending_holdback" | "frozen" | "released" | "refunded";
@@ -45,8 +44,8 @@ export function createSettlementLedgerEntry(
   },
   at: string
 ): SettlementLedgerEntry {
-  if (input.order.status !== "paid") {
-    throw new Error("Settlement entries can only be created for paid orders.");
+  if (!isGatewayLeaseIssued(input.order)) {
+    throw new Error("Settlement entries can only be created for Gateway lease issued orders.");
   }
   const gross = parseAmount(input.order.paidAmount ?? input.order.amount ?? "0");
   const developerShare = gross * 0.8;
@@ -147,10 +146,6 @@ export function summarizeDeveloperSettlements(
     frozenAmount: sumByStatus(scoped, ["frozen"], "developerShareAmount"),
     refundedAmount: sumByStatus(scoped, ["refunded"], "developerShareAmount")
   };
-}
-
-export function isAccessBridgeConfirmed(bridge: AccessBridgeRequest | undefined): boolean {
-  return bridge?.status === "confirmed";
 }
 
 function sumByStatus(

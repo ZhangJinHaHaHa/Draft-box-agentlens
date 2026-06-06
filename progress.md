@@ -25,7 +25,7 @@ Implemented:
   - create/read developer profile
   - link agent to developer
 - Settlement Ledger MVP:
-  - paid order creates settlement entry
+  - Gateway-lease-issued order creates settlement entry
   - 20% platform fee
   - 80% developer share
   - 10% holdback from developer share
@@ -47,15 +47,17 @@ Implemented:
 
 Validation results:
 
-- `cd sandbox && npm test`: 745 passing.
-- `cd frontend && npm test`: 92 passing.
-- `PLATFORM_API_BASE_URL=http://127.0.0.1:8793 npm run run:platform:mvp-smoke`: passing.
+- `npm test --prefix sandbox -- platform/orderState.test.ts platform/accessBridge.test.ts platform/platformApiServer.test.ts platform/persistentPlatformApiStore.test.ts recommendation/recommendationService.test.ts`: 754 passing.
+- `npm test --prefix frontend`: 93 passing.
+- `npm test --prefix frontend -- platformClient.test.ts`: 6 passing.
+- `npm run build --prefix frontend`: passing with the existing large chunk warning.
+- `PLATFORM_API_BASE_URL=http://127.0.0.1:8793 npm run run:platform:mvp-smoke`: not rerun in this sandbox because local port listening was blocked.
 
-HTTP smoke observed:
+HTTP smoke script expected observations:
 
 - recommendation engine: `mock-llm`
 - recommendation balance after charge: `97`
-- access bridge status: `confirmed`
+- access bridge status: `pending_chain_grant`
 - wallet custody mode: `external_migrated`
 - refund status: `partial_refund`
 - settlement developer id: `developer-1`
@@ -63,8 +65,7 @@ HTTP smoke observed:
 
 Open next action:
 
-- Run final frontend build.
-- Update local runbook and C-line status docs.
+- Run final Platform API HTTP smoke in a local environment that can bind the Platform API port.
 - Commit and push to draft PR #1.
 
 ## 2026-06-05

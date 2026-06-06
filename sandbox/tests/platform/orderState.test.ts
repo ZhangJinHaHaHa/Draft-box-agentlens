@@ -4,7 +4,6 @@ import test from "node:test";
 import {
   assertOrderReadyForAccessBridge,
   isValidOrderTransition,
-  markOrderAccessBridged,
   transitionOrderStatus,
   type PlatformOrder
 } from "../../src/platform/orderState";
@@ -18,28 +17,29 @@ const pendingOrder: PlatformOrder = {
   updatedAt: "2026-06-05T00:00:00.000Z"
 };
 
-test("isValidOrderTransition allows pending -> paid and pending -> failed", () => {
-  assert.equal(isValidOrderTransition("pending", "paid"), true);
+test("isValidOrderTransition allows pending -> gateway_lease_issued and pending -> failed", () => {
+  assert.equal(isValidOrderTransition("pending", "gateway_lease_issued"), true);
   assert.equal(isValidOrderTransition("pending", "failed"), true);
 });
 
-test("isValidOrderTransition allows paid -> refunded only", () => {
-  assert.equal(isValidOrderTransition("paid", "refunded"), true);
-  assert.equal(isValidOrderTransition("paid", "failed"), false);
-  assert.equal(isValidOrderTransition("paid", "pending"), false);
+test("isValidOrderTransition allows gateway_lease_issued -> refunded only", () => {
+  assert.equal(isValidOrderTransition("gateway_lease_issued", "refunded"), true);
+  assert.equal(isValidOrderTransition("gateway_lease_issued", "failed"), false);
+  assert.equal(isValidOrderTransition("gateway_lease_issued", "pending"), false);
 });
 
 test("terminal order states cannot move again", () => {
-  assert.equal(isValidOrderTransition("failed", "paid"), false);
-  assert.equal(isValidOrderTransition("refunded", "paid"), false);
+  assert.equal(isValidOrderTransition("failed", "gateway_lease_issued"), false);
+  assert.equal(isValidOrderTransition("refunded", "gateway_lease_issued"), false);
 });
 
-test("transitionOrderStatus stamps paidAt and updatedAt", () => {
-  const paid = transitionOrderStatus(pendingOrder, "paid", "2026-06-05T00:01:00.000Z");
+test("transitionOrderStatus stamps Gateway lease and payment timestamps", () => {
+  const leased = transitionOrderStatus(pendingOrder, "gateway_lease_issued", "2026-06-05T00:01:00.000Z");
 
-  assert.equal(paid.status, "paid");
-  assert.equal(paid.paidAt, "2026-06-05T00:01:00.000Z");
-  assert.equal(paid.updatedAt, "2026-06-05T00:01:00.000Z");
+  assert.equal(leased.status, "gateway_lease_issued");
+  assert.equal(leased.paidAt, "2026-06-05T00:01:00.000Z");
+  assert.equal(leased.gatewayLeaseIssuedAt, "2026-06-05T00:01:00.000Z");
+  assert.equal(leased.updatedAt, "2026-06-05T00:01:00.000Z");
 });
 
 test("transitionOrderStatus rejects invalid direct refund", () => {
@@ -49,34 +49,17 @@ test("transitionOrderStatus rejects invalid direct refund", () => {
   );
 });
 
-test("access bridge is allowed only after paid", () => {
+test("chain grant is allowed only after Gateway lease metadata exists", () => {
   assert.throws(
     () => assertOrderReadyForAccessBridge(pendingOrder),
-    /must be paid before access can be bridged/
+    /must have a Gateway lease/
   );
 
-  const paid = transitionOrderStatus(pendingOrder, "paid", "2026-06-05T00:01:00.000Z");
-  assert.doesNotThrow(() => assertOrderReadyForAccessBridge(paid));
-});
-
-test("markOrderAccessBridged records one chain transaction", () => {
-  const paid = transitionOrderStatus(pendingOrder, "paid", "2026-06-05T00:01:00.000Z");
-  const bridged = markOrderAccessBridged(
-    paid,
-    "0x1111111111111111111111111111111111111111111111111111111111111111",
-    "2026-06-05T00:02:00.000Z"
-  );
-
-  assert.equal(
-    bridged.chainAccessTxHash,
-    "0x1111111111111111111111111111111111111111111111111111111111111111"
-  );
-  assert.throws(
-    () => markOrderAccessBridged(
-      bridged,
-      "0x2222222222222222222222222222222222222222222222222222222222222222",
-      "2026-06-05T00:03:00.000Z"
-    ),
-    /already has a chain access transaction/
-  );
+  const leased = {
+    ...transitionOrderStatus(pendingOrder, "gateway_lease_issued", "2026-06-05T00:01:00.000Z"),
+    gatewayLeaseToken: "gateway-lease-1",
+    gatewayLeaseExpiresAt: "2026-07-05T00:01:00.000Z",
+    chainGrantStatus: "pending_chain_grant" as const
+  };
+  assert.doesNotThrow(() => assertOrderReadyForAccessBridge(leased));
 });

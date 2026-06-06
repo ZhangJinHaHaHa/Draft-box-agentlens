@@ -2,9 +2,7 @@ import crypto from "node:crypto";
 
 import {
   createAccessBridgeRequest,
-  markAccessBridgeConfirmed,
   markAccessBridgeFailed,
-  markAccessBridgeSubmitted,
   type AccessBridgeRequest
 } from "./accessBridge";
 import {
@@ -22,6 +20,7 @@ import {
   type DeveloperTrustStatus
 } from "./developerProfile";
 import {
+  isGatewayLeaseIssued,
   transitionOrderStatus,
   type PlatformOrder,
   type PlatformOrderCurrency
@@ -42,7 +41,6 @@ import {
 import {
   createSettlementLedgerEntry,
   freezeSettlementEntry,
-  isAccessBridgeConfirmed,
   releaseSettlementEntry,
   resolveSettlementAfterRefund,
   summarizeDeveloperSettlements,
@@ -418,24 +416,6 @@ export class InMemoryPlatformApiStore {
     return bridge;
   }
 
-  submitAccessBridge(
-    bridgeId: string,
-    input: { chainAccessTxHash?: string } = {}
-  ): AccessBridgeRequest {
-    const txHash = input.chainAccessTxHash ?? deterministicTransactionHash(`${bridgeId}:${this.now()}`);
-    const bridge = markAccessBridgeSubmitted(this.getAccessBridge(bridgeId), txHash, this.now());
-    this.bridges.set(bridgeId, bridge);
-    this.persist();
-    return bridge;
-  }
-
-  confirmAccessBridge(bridgeId: string): AccessBridgeRequest {
-    const bridge = markAccessBridgeConfirmed(this.getAccessBridge(bridgeId), this.now());
-    this.bridges.set(bridgeId, bridge);
-    this.persist();
-    return bridge;
-  }
-
   failAccessBridge(bridgeId: string, failureReason: string): AccessBridgeRequest {
     const bridge = markAccessBridgeFailed(this.getAccessBridge(bridgeId), failureReason, this.now());
     this.bridges.set(bridgeId, bridge);
@@ -535,35 +515,39 @@ export class InMemoryPlatformApiStore {
     const order = this.getOrder(normalized.orderId);
     const user = this.getUser(order.userId);
     const at = this.now();
-    const paidOrder = {
-      ...transitionOrderStatus(order, "paid", at),
+    const gatewayLease = createGatewayLease(normalized.orderId, user.platformUserId, at);
+    const leasedOrder = {
+      ...transitionOrderStatus(order, "gateway_lease_issued", at),
       paymentProvider: normalized.paymentProvider,
       providerPaymentId: normalized.providerPaymentId,
       idempotencyKey: normalized.idempotencyKey,
-      paidAmount: normalized.paidAmount
+      paidAmount: normalized.paidAmount,
+      gatewayLeaseToken: gatewayLease.token,
+      gatewayLeaseExpiresAt: gatewayLease.expiresAt,
+      chainGrantStatus: "pending_chain_grant" as const
     };
     const bridge = createAccessBridgeRequest(
       {
         bridgeId: `access-bridge-${++this.bridgeSeq}`,
-        order: paidOrder,
+        order: leasedOrder,
         userWalletAddress: user.walletAddress
       },
       at
     );
 
-    this.orders.set(normalized.orderId, paidOrder);
+    this.orders.set(normalized.orderId, leasedOrder);
     this.bridges.set(bridge.bridgeId, bridge);
     this.bridgeIdsByOrderId.set(normalized.orderId, bridge.bridgeId);
     const settlement = createSettlementLedgerEntry(
       {
         settlementId: `settlement-${++this.settlementSeq}`,
-        order: paidOrder,
-        developerId: this.agentDeveloperLinks.get(paidOrder.agentId)?.developerId ?? "unassigned-developer"
+        order: leasedOrder,
+        developerId: this.agentDeveloperLinks.get(leasedOrder.agentId)?.developerId ?? "unassigned-developer"
       },
       at
     );
     this.settlements.set(settlement.settlementId, settlement);
-    this.settlementIdsByOrderId.set(paidOrder.orderId, settlement.settlementId);
+    this.settlementIdsByOrderId.set(leasedOrder.orderId, settlement.settlementId);
     const paymentCallback: PlatformPaymentCallbackRecord = {
       ...normalized,
       bridgeId: bridge.bridgeId,
@@ -572,7 +556,7 @@ export class InMemoryPlatformApiStore {
     this.paymentCallbacks.set(normalized.idempotencyKey, paymentCallback);
     this.persist();
     return {
-      order: paidOrder,
+      order: leasedOrder,
       bridge,
       paymentCallback,
       idempotentReplay: false
@@ -581,8 +565,8 @@ export class InMemoryPlatformApiStore {
 
   createRefund(input: CreateRefundInput): RefundCase {
     const order = this.getOrder(input.orderId);
-    if (order.status !== "paid") {
-      throw new PlatformApiError(400, `Order "${order.orderId}" must be paid before refund review.`);
+    if (!isGatewayLeaseIssued(order)) {
+      throw new PlatformApiError(400, `Order "${order.orderId}" must have a Gateway lease before refund review.`);
     }
 
     const refund = buildRefundCase(
@@ -641,12 +625,11 @@ export class InMemoryPlatformApiStore {
     if (order.userId !== user.platformUserId) {
       throw new PlatformApiError(403, `User "${user.platformUserId}" cannot review order "${order.orderId}".`);
     }
-    if (order.status !== "paid") {
-      throw new PlatformApiError(400, `Order "${order.orderId}" must be paid before usage review.`);
+    if (!isGatewayLeaseIssued(order)) {
+      throw new PlatformApiError(400, `Order "${order.orderId}" must have a Gateway lease before usage review.`);
     }
-    const bridge = this.getAccessBridgeForOrder(order.orderId);
-    if (!isAccessBridgeConfirmed(bridge)) {
-      throw new PlatformApiError(400, `Order "${order.orderId}" must have confirmed access before usage review.`);
+    if (!order.gatewayLeaseToken) {
+      throw new PlatformApiError(400, `Order "${order.orderId}" is missing Gateway lease metadata.`);
     }
     if (this.usageReviewIdsByOrderId.has(order.orderId)) {
       throw new PlatformApiError(409, `Order "${order.orderId}" has already been reviewed.`);
@@ -939,16 +922,20 @@ function assertPaymentCallbackReplayMatches(
   }
 }
 
+function createGatewayLease(orderId: string, userId: string, issuedAt: string): { token: string; expiresAt: string } {
+  const expiresAt = new Date(new Date(issuedAt).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  return {
+    token: `gateway-lease-${hashHex(`agentlens:gateway-lease:${orderId}:${userId}:${issuedAt}`).slice(0, 32)}`,
+    expiresAt
+  };
+}
+
 function deterministicWalletAddress(subject: string): string {
   return `0x${hashHex(`agentlens:web2:wallet:${subject}`).slice(0, 40)}`;
 }
 
 function shortHash(value: string): string {
   return hashHex(`agentlens:web2:user:${value}`).slice(0, 12);
-}
-
-function deterministicTransactionHash(value: string): string {
-  return `0x${hashHex(`agentlens:mock-chain:${value}`)}`;
 }
 
 function hashHex(value: string): string {

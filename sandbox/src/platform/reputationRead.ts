@@ -16,7 +16,8 @@ export interface ReputationSnapshot {
   updatedAt: string;
   signals: {
     paidOrders: number;
-    confirmedAccessBridges: number;
+    gatewayLeasesIssued: number;
+    pendingChainGrants: number;
     refunds: number;
     severeRefunds: number;
     reviewCount?: number;
@@ -39,9 +40,12 @@ export function buildAgentReputationSnapshot(
   },
   at: string
 ): ReputationSnapshot {
-  const paidOrders = input.orders.filter((order) => order.agentId === agentId && order.status === "paid").length;
-  const confirmedAccessBridges = input.bridges.filter(
-    (bridge) => bridge.agentId === agentId && bridge.status === "confirmed"
+  const paidOrders = input.orders.filter((order) => order.agentId === agentId && Boolean(order.paidAt)).length;
+  const gatewayLeasesIssued = input.orders.filter(
+    (order) => order.agentId === agentId && order.status === "gateway_lease_issued"
+  ).length;
+  const pendingChainGrants = input.bridges.filter(
+    (bridge) => bridge.agentId === agentId && bridge.status === "pending_chain_grant"
   ).length;
   const refunds = input.refunds.filter((refund) => refund.agentId === agentId).length;
   const severeRefunds = input.refunds.filter(
@@ -55,7 +59,7 @@ export function buildAgentReputationSnapshot(
   const reviewPenalty =
     reviewSummary.capabilityMismatchReports * 4 + reviewSummary.safetyIncidentReports * 10;
   const baseScore =
-    60 + confirmedAccessBridges * 5 + paidOrders * 2 - refunds * 8 - severeRefunds * 12 + reviewBoost - reviewPenalty;
+    60 + gatewayLeasesIssued * 5 + paidOrders * 2 - refunds * 8 - severeRefunds * 12 + reviewBoost - reviewPenalty;
   const developerBoost = input.developer ? Math.round((input.developer.trustScore - 50) / 5) : 0;
   const score = clampScore(baseScore + developerBoost);
 
@@ -68,7 +72,8 @@ export function buildAgentReputationSnapshot(
     updatedAt: at,
     signals: {
       paidOrders,
-      confirmedAccessBridges,
+      gatewayLeasesIssued,
+      pendingChainGrants,
       refunds,
       severeRefunds,
       reviewCount: reviewSummary.reviewCount,
@@ -93,9 +98,12 @@ export function buildDeveloperReputationSnapshot(
   at: string
 ): ReputationSnapshot {
   const linkedAgents = new Set(input.linkedAgentIds);
-  const paidOrders = input.orders.filter((order) => linkedAgents.has(order.agentId) && order.status === "paid").length;
-  const confirmedAccessBridges = input.bridges.filter(
-    (bridge) => linkedAgents.has(bridge.agentId) && bridge.status === "confirmed"
+  const paidOrders = input.orders.filter((order) => linkedAgents.has(order.agentId) && Boolean(order.paidAt)).length;
+  const gatewayLeasesIssued = input.orders.filter(
+    (order) => linkedAgents.has(order.agentId) && order.status === "gateway_lease_issued"
+  ).length;
+  const pendingChainGrants = input.bridges.filter(
+    (bridge) => linkedAgents.has(bridge.agentId) && bridge.status === "pending_chain_grant"
   ).length;
   const refunds = input.refunds.filter((refund) => linkedAgents.has(refund.agentId)).length;
   const severeRefunds = input.refunds.filter(
@@ -115,7 +123,7 @@ export function buildDeveloperReputationSnapshot(
   const reviewBoost = platformRating === null ? 0 : Math.round((platformRating - 60) / 6);
   const reviewPenalty = capabilityMismatchReports * 3 + safetyIncidentReports * 8;
   const score = clampScore(
-    developer.trustScore + confirmedAccessBridges * 3 + paidOrders - refunds * 6 - severeRefunds * 10 + reviewBoost - reviewPenalty
+    developer.trustScore + gatewayLeasesIssued * 3 + paidOrders - refunds * 6 - severeRefunds * 10 + reviewBoost - reviewPenalty
   );
 
   return {
@@ -127,7 +135,8 @@ export function buildDeveloperReputationSnapshot(
     updatedAt: at,
     signals: {
       paidOrders,
-      confirmedAccessBridges,
+      gatewayLeasesIssued,
+      pendingChainGrants,
       refunds,
       severeRefunds,
       reviewCount,

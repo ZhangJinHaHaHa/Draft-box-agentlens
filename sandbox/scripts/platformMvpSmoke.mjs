@@ -77,13 +77,10 @@ const replay = await post("/api/payments/mock-callback", {
 });
 assert(replay.idempotentReplay === true, "Payment callback replay was not idempotent.");
 assert(paid.bridge.bridgeId === replay.bridge.bridgeId, "Payment callback replay created a different bridge.");
-
-const submitted = await post(`/api/access-bridges/${paid.bridge.bridgeId}/submit`, {
-  chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-});
-const confirmed = await post(`/api/access-bridges/${paid.bridge.bridgeId}/confirm`);
-assert(submitted.accessBridge.status === "submitted", "Access bridge was not submitted.");
-assert(confirmed.accessBridge.status === "confirmed", "Access bridge was not confirmed.");
+assert(paid.order.status === "gateway_lease_issued", "Payment did not issue a Gateway lease.");
+assert(paid.order.chainGrantStatus === "pending_chain_grant", "Order did not mark chain grant as pending.");
+assert(paid.bridge.status === "pending_chain_grant", "Access bridge did not wait for chain grant.");
+assert(paid.bridge.expectedGrantFunction === "grantRentalAccess", "Access bridge expects the wrong grant function.");
 
 const exportReady = await post(`/api/web2/users/${user.platformUserId}/wallet/export/request`, {
   freshGoogleAuth: true,
@@ -144,7 +141,8 @@ console.log(JSON.stringify({
   recommendationEngine: paidRecommendation.engine,
   recommendationBalanceAfter: paidRecommendation.creditAccount.balance,
   orderId: order.orderId,
-  accessBridgeStatus: confirmed.accessBridge.status,
+  orderStatus: paid.order.status,
+  chainGrantStatus: paid.bridge.status,
   walletCustodyMode: migrated.user.custodyMode,
   refundStatus: resolvedRefund.refund.status,
   settlementStatus: settlement.settlement.status,

@@ -17,11 +17,11 @@ PR: https://github.com/ZhangJinHaHaHa/Draft-box-agentlens/pull/1
 - Web2 用户入口: Google mock 登录创建平台用户、托管钱包和初始积分。
 - 托管钱包: 支持可导出状态机和迁移到外部钱包，API 不返回私钥材料。
 - 订单支付: 创建订单、mock payment callback、幂等支付回调。
-- Web2 访问权桥接: 订单 paid 后创建 access bridge，模拟 operator wallet 写链上访问权。
+- Web2 访问权桥接: 付款后签发平台 Gateway lease，创建 `pending_chain_grant` access bridge，等待 B/C bridge 后续接 `grantRentalAccess(...)`。
 - 退款规则: 区分安全事件、访问失败、核心能力不足、设计不匹配等退款路径。
-- 结算与 holdback: paid order 生成开发者结算，退款 review 时冻结/回滚结算。
+- 结算与 holdback: Gateway lease issued order 生成开发者结算，退款 review 时冻结/回滚结算。
 - 开发者/Agent 本地声誉: 聚合订单、访问权、退款、评分等平台信号。
-- 使用后评分闭环: 付费且访问权确认后才能评分，一个订单只能评一次；评分会回灌声誉和推荐信号。
+- 使用后评分闭环: Gateway lease 签发后才能评分，一个订单只能评一次；评分会回灌声誉和推荐信号。
 - 独立 C 线 demo 页: `frontend/public/c-line-demo.html`，不依赖主 React 页面和前端 env。
 
 ## 建议队友重点审阅的文件
@@ -39,7 +39,7 @@ PR: https://github.com/ZhangJinHaHaHa/Draft-box-agentlens/pull/1
 
 - `sandbox/src/platform/reputationRead.ts`
   - 本地声誉快照。
-  - 评分、退款、访问权确认会影响 reputation signals。
+- 评分、退款、Gateway lease 和 pending chain grant 会影响 reputation signals。
 
 - `sandbox/tests/platform/platformApiServer.test.ts`
   - API 级测试，覆盖评分前置条件、重复评分、推荐信号回灌。
@@ -103,8 +103,8 @@ POST /api/reviews
 
 关键规则:
 
-- 订单必须是 `paid`。
-- 对应 access bridge 必须是 `confirmed`。
+- 订单必须是 `gateway_lease_issued`。
+- 对应订单必须已经有 Gateway lease metadata。
 - `orderId + userId` 必须匹配。
 - 一个订单只能提交一次使用后评分。
 - 评分记录会生成 `commentHash`，保留后续上链空间。
@@ -120,19 +120,20 @@ POST /api/reviews
 本地已通过:
 
 ```bash
-npm run build --prefix sandbox
-npm test --prefix sandbox -- platform/platformApiServer.test.ts platform/persistentPlatformApiStore.test.ts
+npm test --prefix sandbox -- platform/orderState.test.ts platform/accessBridge.test.ts platform/platformApiServer.test.ts platform/persistentPlatformApiStore.test.ts recommendation/recommendationService.test.ts
+npm test --prefix frontend
 npm run build --prefix frontend
 ```
 
-实际 `sandbox` 测试命令跑到了全量 Node 测试，结果为 `755 passed`。
+实际 `sandbox` 测试命令跑到了全量 Node 测试，结果为 `754 passed`。前端全量 Vitest 为 `93 passed`。
 
-真实 HTTP smoke 也已通过:
+真实 HTTP smoke 本轮未重跑，因为当前 sandbox 不允许监听本地 Platform API 端口。可在本地端口可用环境按下面观察点复跑:
 
 - 使用后评分返回 `201`。
 - 同一订单重复评分返回 `409`。
 - Agent review summary 中 `platformRating=100`。
 - 推荐接口仍正常扣积分，用户余额从 `100` 到 `97`。
+- 订单状态为 `gateway_lease_issued`，access bridge 保持 `pending_chain_grant`。
 - Top recommendation 为 `dify`。
 
 ## 当前边界
@@ -142,7 +143,7 @@ npm run build --prefix frontend
 - 主 React 页面最终样式接入。
 - 真实 Google OAuth。
 - 真实支付服务商。
-- 真实 operator wallet 链上写交易。
+- 真实 B/C bridge 链上授权交易。
 - 合约变更。
 - 私钥导出材料返回。
 
@@ -160,4 +161,4 @@ npm run build --prefix frontend
 
 - A 线是否需要主前端直接调用 `POST /api/recommendations/llm`。
 - B/链上线是否要把 `commentHash` 和 6 维评分写入 `AgentReviewRegistry`。
-- operator wallet 写链上访问权的真实交易由哪条线最终接入。
+- B/C bridge 的 `grantRentalAccess(...)` 真实交易由哪条线最终接入。

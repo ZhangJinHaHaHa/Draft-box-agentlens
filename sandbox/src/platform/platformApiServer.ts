@@ -266,13 +266,11 @@ export async function handlePlatformApiRequest(
       parts[1] === "access-bridges" &&
       parts[3] === "submit"
     ) {
-      const payload = await readJsonObject(request);
-      writeJson(response, 200, {
-        accessBridge: store.submitAccessBridge(parts[2], {
-          chainAccessTxHash: readOptionalString(payload, "chainAccessTxHash")
-        })
-      });
-      return;
+      store.getAccessBridge(parts[2]);
+      throw new PlatformApiError(
+        501,
+        "Chain grant submission is waiting for B/C bridge support: grantRentalAccess(tokenId, buyer, expiresAt, orderIdHash, amountPaid)."
+      );
     }
 
     if (
@@ -282,13 +280,11 @@ export async function handlePlatformApiRequest(
       parts[1] === "access-bridges" &&
       parts[3] === "retry"
     ) {
-      const payload = await readJsonObject(request);
-      writeJson(response, 200, {
-        accessBridge: store.submitAccessBridge(parts[2], {
-          chainAccessTxHash: readOptionalString(payload, "chainAccessTxHash")
-        })
-      });
-      return;
+      store.getAccessBridge(parts[2]);
+      throw new PlatformApiError(
+        501,
+        "Chain grant retry is waiting for B/C bridge support: grantRentalAccess(tokenId, buyer, expiresAt, orderIdHash, amountPaid)."
+      );
     }
 
     if (
@@ -298,8 +294,11 @@ export async function handlePlatformApiRequest(
       parts[1] === "access-bridges" &&
       parts[3] === "confirm"
     ) {
-      writeJson(response, 200, { accessBridge: store.confirmAccessBridge(parts[2]) });
-      return;
+      store.getAccessBridge(parts[2]);
+      throw new PlatformApiError(
+        501,
+        "Chain grant confirmation is waiting for B/C bridge support: grantRentalAccess(tokenId, buyer, expiresAt, orderIdHash, amountPaid)."
+      );
     }
 
     if (
@@ -601,7 +600,7 @@ function enrichRecommendationCatalogWithPlatformSignals(
     const paidOrders = reputation.signals.paidOrders;
     const hasLocalSignals =
       paidOrders > 0 ||
-      reputation.signals.confirmedAccessBridges > 0 ||
+      reputation.signals.gatewayLeasesIssued > 0 ||
       reputation.signals.refunds > 0 ||
       reviewSummary.reviewCount > 0 ||
       reputation.signals.developerTrustScore !== undefined;
@@ -616,7 +615,7 @@ function enrichRecommendationCatalogWithPlatformSignals(
         ? {
             paidOrders,
             refundRate: reputation.signals.refunds / paidOrders,
-            accessBridgeSuccessRate: reputation.signals.confirmedAccessBridges / paidOrders
+            gatewayLeaseIssuedRate: reputation.signals.gatewayLeasesIssued / paidOrders
           }
         : {})
     };
