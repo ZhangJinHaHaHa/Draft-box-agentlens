@@ -127,20 +127,27 @@ function checkEnumLiterals(fileLabel, body) {
 function validate() {
   const curated = read("src/data/catalog/curated.ts");
   const listed = read("src/data/catalog/listed.ts");
+  const marketplace = read("src/data/catalog/marketplace.ts");
 
   checkI18nLiterals("curated.ts", curated);
   checkI18nLiterals("listed.ts", listed);
+  checkI18nLiterals("marketplace.ts", marketplace);
   checkEnumLiterals("curated.ts", curated);
   checkEnumLiterals("listed.ts", listed);
+  checkEnumLiterals("marketplace.ts", marketplace);
 
   const curatedIds = extractAgentIds(curated);
   const listedIds = extractAgentIds(listed);
+  const marketplaceIds = extractAgentIds(marketplace);
 
   if (curatedIds.length < 10) {
     fail(`curated.ts: expected at least 10 agents, found ${curatedIds.length}.`);
   }
   if (listedIds.length < 15) {
     fail(`listed.ts: expected at least 15 agents, found ${listedIds.length}.`);
+  }
+  if (marketplaceIds.length < 10) {
+    fail(`marketplace.ts: expected at least 10 agents, found ${marketplaceIds.length}.`);
   }
 
   const allIds = new Set();
@@ -153,6 +160,12 @@ function validate() {
   for (const id of listedIds) {
     if (allIds.has(id)) {
       fail(`listed.ts: duplicate id "${id}".`);
+    }
+    allIds.add(id);
+  }
+  for (const id of marketplaceIds) {
+    if (allIds.has(id)) {
+      fail(`marketplace.ts: duplicate id "${id}".`);
     }
     allIds.add(id);
   }

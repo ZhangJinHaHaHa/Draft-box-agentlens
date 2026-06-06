@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { curatedAgents } from "@/data/catalog/curated";
 import { listedAgents } from "@/data/catalog/listed";
+import { marketplaceAgents } from "@/data/catalog/marketplace";
 import type { AgentCatalogEntry, MergedCatalog } from "@/domain/catalog";
 import { mergeCatalog } from "@/domain/catalog";
 import type { AppConfig } from "@/config/appConfig";
@@ -32,6 +33,7 @@ export function useCatalog({ config, nativeAgents, skipNative }: UseCatalogOptio
     return mergeCatalog({
       curated: curatedAgents,
       listed: listedAgents,
+      marketplace: marketplaceAgents,
       native: sourceNative
     });
   }, [native.agents, nativeAgents, skipNative]);

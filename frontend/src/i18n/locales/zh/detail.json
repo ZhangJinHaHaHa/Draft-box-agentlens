@@ -10,7 +10,13 @@
     "title": "决策摘要",
     "fitFor": "适合谁",
     "notFitFor": "不适合谁",
+    "mainRisk": "主风险",
     "nextStep": "建议下一步",
+    "riskFallback": {
+      "low": "当前只看到低风险信号，但仍建议先小范围试用。",
+      "medium": "存在中等风险，正式接入前需要人工复核关键输出。",
+      "high": "高风险工具；除非有明确审计和边界控制，否则不应直接接入生产。"
+    },
     "nextStepFallback": {
       "curated": "查看下方“起步指南”，先按指南跑一遍。",
       "listed": "查官方文档与报价，再决定要不要试。",
@@ -49,6 +55,26 @@
     "evidence": "证据",
     "audit": "审计回执",
     "noChainEvidence": "该 Agent 不在链上注册，仅有内容层证据。"
+  },
+  "rental": {
+    "title": "租赁入口",
+    "subtitle": {
+      "native": "这里可以展示平台原生信号，但当前未接入真实交易执行。",
+      "curated": "该目录项保留官方访问入口，不伪装成平台可租。"
+    },
+    "web2": {
+      "title": "Web2 通道",
+      "action": "申请访问",
+      "configured": "使用已配置的订单或法币申请入口。",
+      "disabledReason": "订单接口未配置。"
+    },
+    "web3": {
+      "title": "Web3 通道",
+      "action": "链上租赁",
+      "price": "市场价格：{{price}}",
+      "disabledReason": "钱包交易入口未接入。",
+      "marketplaceReadOnly": "可以展示 marketplace 价格，但尚未实现钱包签名。"
+    }
   },
   "official": {
     "title": "官方资源",

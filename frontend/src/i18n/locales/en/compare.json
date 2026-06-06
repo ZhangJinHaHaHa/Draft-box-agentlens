@@ -5,8 +5,38 @@
     "limit": "You can compare up to 4 agents.",
     "open": "Open compare"
   },
+  "narrative": {
+    "title": "How to choose, in plain words"
+  },
   "page": {
-    "title": "Compare agents",
-    "subtitle": "This page lights up in Phase 2 — placeholder for now."
+    "title": "Compare Agents",
+    "subtitle": "Select the best Agent based on multiple metrics",
+    "empty": "No Agents Selected",
+    "emptyDesc": "Please select at least 2 agents to compare",
+    "clear": "Clear compare",
+    "back": "Back to Directory",
+    "limit": "Only the first 4 agents are shown; remove extras from the URL or the compare list.",
+    "conclusion": "Conclusion",
+    "winner": "Recommended",
+    "rules": {
+      "try-first": "Try First: Best balance of risk, complexity, and trust.",
+      "formal-integration": "Formal Integration: Powerful but complex or lacks onboarding.",
+      "avoid-for-now": "Avoid For Now: All options have high risk or lack trust evidence.",
+      "manual-judgment": "Manual Judgment: Similar metrics, please evaluate based on your use case."
+    },
+    "attrs": {
+      "scenario": "Scenarios",
+      "unsuitableScenario": "Unsuitable",
+      "seller": "Seller behind it",
+      "complexity": "Complexity",
+      "riskLevel": "Risk Level",
+      "trustTier": "Trust Tier",
+      "onboarding": "Onboarding Guide",
+      "auditEvidence": "Audit Evidence",
+      "pricing": "Pricing",
+      "officialRoute": "Official Route"
+    },
+    "has": "Yes",
+    "none": "No"
   }
 }

@@ -17,6 +17,8 @@ export interface AppConfig {
   appealApiUrl?: string;
   attestation?: AttestationUiConfig;
   marketplaceAddress?: string;
+  recommendationApiUrl?: string;
+  rentalWeb2Url?: string;
 }
 
 export type AppConfigResult =
@@ -41,6 +43,8 @@ export interface AppEnv {
   VITE_AUDIT_ATTESTATION_EXPECTED_QUOTE_FORMAT?: string;
   VITE_AUDIT_ATTESTATION_VERIFY_REPORT_DATA_BINDING?: string;
   VITE_AUDIT_MARKETPLACE_ADDRESS?: string;
+  VITE_RECOMMENDATION_API_URL?: string;
+  VITE_RENTAL_WEB2_URL?: string;
 }
 
 export function readAppConfig(env: AppEnv): AppConfigResult {
@@ -92,6 +96,12 @@ export function readAppConfig(env: AppEnv): AppConfigResult {
       ...(attestation ? { attestation } : {}),
       ...(readOptionalEnvString(env.VITE_AUDIT_MARKETPLACE_ADDRESS)
         ? { marketplaceAddress: readOptionalEnvString(env.VITE_AUDIT_MARKETPLACE_ADDRESS) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_RECOMMENDATION_API_URL)
+        ? { recommendationApiUrl: readOptionalEnvString(env.VITE_RECOMMENDATION_API_URL) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_RENTAL_WEB2_URL)
+        ? { rentalWeb2Url: readOptionalEnvString(env.VITE_RENTAL_WEB2_URL) }
         : {})
     }
   };

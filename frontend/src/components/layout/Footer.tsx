@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { useLocale } from "@/i18n/useLocale";
+import { useCompareSelection } from "@/hooks/useCompareSelection";
 
 const FOOTER_LINKS = [
   { key: "agents", to: "/agents" },
@@ -12,10 +13,11 @@ const FOOTER_LINKS = [
 export function Footer(): JSX.Element {
   const { t } = useTranslation("common");
   const { buildPath } = useLocale();
+  const { ids, compareHref } = useCompareSelection();
   const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-24 border-t border-border bg-background">
+    <footer className="glass-nav relative z-10 mt-24 border-t">
       <div className="container-page flex flex-col gap-6 py-10 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium text-foreground">{t("appName")}</p>
@@ -23,13 +25,14 @@ export function Footer(): JSX.Element {
         </div>
         <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
           {FOOTER_LINKS.map((link) => (
-            <Link key={link.key} to={buildPath(link.to)} className="hover:text-foreground">
+            <Link key={link.key} to={buildPath(link.key === "compare" ? compareHref : link.to)} className="hover:text-foreground">
               {t(`nav.${link.key}`)}
+              {link.key === "compare" && ids.length > 0 ? ` (${ids.length})` : ""}
             </Link>
           ))}
         </nav>
       </div>
-      <div className="border-t border-border">
+      <div className="border-t border-border/70">
         <div className="container-page py-4 text-xs text-muted-foreground">
           {t("footer.rights", { year })}
         </div>

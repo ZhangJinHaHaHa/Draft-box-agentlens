@@ -1,7 +1,54 @@
 {
   "page": {
     "title": "需求推荐",
-    "subtitle": "告诉我们你要做什么、看重什么——我们再给候选。",
-    "comingSoon": "推荐引擎将在阶段二上线。当前你可以先去 “Agent 列表” 用筛选定位候选。"
+    "subtitle": "告诉我们你要做什么、看重什么；先用本地确定性规则给出候选。"
+  },
+  "form": {
+    "title": "需求输入",
+    "task": "任务描述",
+    "taskPlaceholder": "例如：我想给客服知识库做一个能引用来源的自动回复 Agent",
+    "scenario": "用例场景",
+    "noScenario": "暂不指定",
+    "usageContext": "使用方式",
+    "usage": {
+      "solo": "个人试用",
+      "team": "团队接入"
+    },
+    "access": "偏好接入",
+    "anyAccess": "不限",
+    "priority": "优先级",
+    "priorities": {
+      "ease": "易用优先",
+      "safety": "安全优先",
+      "capability": "能力优先",
+      "price": "价格透明优先"
+    },
+    "acceptsNative": "接受平台原生 Agent",
+    "submit": "生成推荐",
+    "submitting": "生成中..."
+  },
+  "results": {
+    "initial": "填写左侧需求后生成候选。",
+    "empty": "没有足够匹配的候选。",
+    "emptyHint": "换一个场景，放宽接入方式，或去 Agent 列表手动筛选。",
+    "tooFew": "只找到 {{count}} 个候选；当前目录可能缺少这个品类的数据。",
+    "score": "分数 {{score}}",
+    "why": "为什么推荐",
+    "risk": "风险",
+    "nextStep": "下一步",
+    "sources": {
+      "api": "API 推荐",
+      "local": "本地规则兜底",
+      "api-fallback": "API 不可用，使用本地规则兜底"
+    }
+  },
+  "reasonCodes": {
+    "scenario-match": "场景匹配",
+    "task-keyword": "任务关键词匹配",
+    "access-match": "接入方式匹配",
+    "low-risk": "风险较低",
+    "easy-start": "容易开始",
+    "trust-evidence": "有信任证据",
+    "rentable": "支持平台租赁"
   }
 }

@@ -1,13 +1,16 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ExternalLink, FileCheck2, ShieldCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
+import { AuditReportSummary } from "@/components/trust/AuditReportSummary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AppConfig } from "@/config/appConfig";
+import { summarizeAuditReport } from "@/domain/auditReportSummary";
 import { useLocale } from "@/i18n/useLocale";
 import {
   createAgentAuditRegistryClient,
@@ -104,6 +107,7 @@ export function AuditReportPage({
     auditIndex: string;
   }>();
   const { buildPath } = useLocale();
+  const { t } = useTranslation("report");
   const parsedTokenId = parseTokenIdInput(id);
   const parsedAuditIndex = parseTokenIdInput(auditIndex);
   const parsedAuditId = auditId === "latest" ? null : parseTokenIdInput(auditId);
@@ -306,7 +310,7 @@ export function AuditReportPage({
         <Button asChild variant="ghost" size="sm" className="mb-6">
           <Link to={buildPath(`/agent/${id}`)}>
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-            Back to agent
+            {t("back")}
           </Link>
         </Button>
         <Card>
@@ -337,6 +341,13 @@ export function AuditReportPage({
     appealApiStatus !== "rejected" &&
     !effectiveAuditRecord.appealRequested &&
     !effectiveAuditRecord.appealApproved;
+  const summary = summarizeAuditReport({
+    auditRecord: effectiveAuditRecord,
+    report: verifiedReport,
+    hashVerified: Boolean(reportResult),
+    reportUnavailableMessage,
+    attestationConfig: config.attestation
+  });
 
   async function handleAppealSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -375,64 +386,56 @@ export function AuditReportPage({
       <Button asChild variant="ghost" size="sm" className="w-fit">
         <Link to={buildPath(`/agent/${id}`)}>
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-          Back to agent
+          {t("back")}
         </Link>
       </Button>
 
-      <Card className="border-foreground/20 bg-foreground/[0.02]">
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={statusVariant(auditRecord.status)}>
-              {verifiedReport?.status ?? getAuditStatusLabel(auditRecord.status)}
-            </Badge>
-            {reportResult ? <Badge variant="success">Hash verified</Badge> : <Badge variant="secondary">On-chain only</Badge>}
-          </div>
-          <CardTitle className="text-3xl">Audit report #{String(auditRecord.auditId)}</CardTitle>
-          <p className="max-w-3xl text-sm text-muted-foreground">
-            {reportResult
-              ? "The detailed report was fetched from the configured gateway and its SHA-256 hash matches the on-chain summary."
-              : "The detailed report body is unavailable, but the on-chain summary is still readable."}
-          </p>
-        </CardHeader>
-      </Card>
+      <AuditReportSummary summary={summary} />
 
-      <OnChainSummary auditRecord={auditRecord} decision={verifiedReport?.decisionType} appealStatus={appealStatusLabel} />
+      <details className="surface-card">
+        <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-foreground">
+          {t("technical.title")}
+        </summary>
+        <div className="flex flex-col gap-6 px-4 pb-4 sm:px-6 sm:pb-6">
+          <OnChainSummary auditRecord={auditRecord} decision={verifiedReport?.decisionType} appealStatus={appealStatusLabel} />
 
-      <EvidenceCard
-        auditRecord={auditRecord}
-        manifestHash={verifiedReport?.manifestHash ?? auditRecord.manifestHash}
-        sourceUrl={reportResult?.sourceUrl}
-        hashVerified={Boolean(reportResult)}
-      />
+          <EvidenceCard
+            auditRecord={auditRecord}
+            manifestHash={verifiedReport?.manifestHash ?? auditRecord.manifestHash}
+            sourceUrl={reportResult?.sourceUrl}
+            hashVerified={Boolean(reportResult)}
+          />
 
-      <AttestationCard attestationHash={auditRecord.attestationHash} expected={config.attestation} />
+          <AttestationCard attestationHash={auditRecord.attestationHash} expected={config.attestation} />
 
-      {verifiedReport ? (
-        <>
-          <ReportBodyCard report={verifiedReport} />
-          {verifiedReport.dimensionalScores ? <DimensionalScoresCard report={verifiedReport} /> : null}
-          {verifiedReport.securityBoundaryScore ? (
-            <SecurityBoundaryCard boundary={verifiedReport.securityBoundaryScore} />
-          ) : null}
-          {verifiedReport.auditQuestions && verifiedReport.auditQuestions.length > 0 ? (
-            <AuditQuestionsCard
-              questions={verifiedReport.auditQuestions}
-              evaluations={verifiedReport.answerEvaluations ?? []}
-            />
-          ) : null}
-          <ResponseTraceCard report={verifiedReport} />
-          {reportResult?.reportJson ? <RawJsonCard json={reportResult.reportJson} /> : null}
-        </>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Report body</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            {reportUnavailableMessage ?? "Detailed report is unavailable."}
-          </CardContent>
-        </Card>
-      )}
+          {verifiedReport ? (
+            <>
+              <ReportBodyCard report={verifiedReport} />
+              {verifiedReport.dimensionalScores ? <DimensionalScoresCard report={verifiedReport} /> : null}
+              {verifiedReport.securityBoundaryScore ? (
+                <SecurityBoundaryCard boundary={verifiedReport.securityBoundaryScore} />
+              ) : null}
+              {verifiedReport.auditQuestions && verifiedReport.auditQuestions.length > 0 ? (
+                <AuditQuestionsCard
+                  questions={verifiedReport.auditQuestions}
+                  evaluations={verifiedReport.answerEvaluations ?? []}
+                />
+              ) : null}
+              <ResponseTraceCard report={verifiedReport} />
+              {reportResult?.reportJson ? <RawJsonCard json={reportResult.reportJson} /> : null}
+            </>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("technical.reportBody")}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                {reportUnavailableMessage ?? t("technical.unavailable")}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </details>
 
       {Number(auditRecord.status) === AUDIT_STATUS_SLASHED ? (
         <AppealCard
@@ -755,7 +758,7 @@ function AppealCard({
               onChange={(event) => onAppealReasonChange(event.target.value)}
               rows={5}
               placeholder="Explain why this slash should be reviewed."
-              className="min-h-32 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="glass-input min-h-32 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             {appealSubmissionState.status === "error" ? (
               <p role="alert" className="text-sm text-danger-foreground">{appealSubmissionState.error}</p>

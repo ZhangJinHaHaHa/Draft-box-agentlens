@@ -1,8 +1,7 @@
-import { ArrowRight, CircleSlash, Compass, Sparkles } from "lucide-react";
+import { ArrowRight, CircleSlash, Compass, ShieldAlert, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { useLocale } from "@/i18n/useLocale";
 import type { AgentCatalogEntry } from "@/domain/catalog";
 import { pickText } from "@/domain/i18nText";
@@ -17,6 +16,9 @@ export function DecisionSummaryCard({ entry }: DecisionSummaryCardProps): JSX.El
 
   const fitFor = entry.recommendedFor.slice(0, 3);
   const notFitFor = entry.unsuitableScenarios.slice(0, 2);
+  const mainRisk = entry.riskNotes[0]
+    ? pickText(entry.riskNotes[0], locale)
+    : t(`summary.riskFallback.${entry.riskLevel}`);
 
   const nextStep = pickText(
     {
@@ -31,7 +33,7 @@ export function DecisionSummaryCard({ entry }: DecisionSummaryCardProps): JSX.El
       <CardHeader>
         <CardTitle className="text-2xl">{t("summary.title")}</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-6 lg:grid-cols-3">
+      <CardContent className="grid gap-6 lg:grid-cols-4">
         <SummaryColumn
           icon={<Sparkles className="h-4 w-4" aria-hidden />}
           label={t("summary.fitFor")}
@@ -49,8 +51,6 @@ export function DecisionSummaryCard({ entry }: DecisionSummaryCardProps): JSX.El
             </ul>
           )}
         </SummaryColumn>
-
-        <Separator orientation="vertical" className="hidden lg:block" />
 
         <SummaryColumn
           icon={<CircleSlash className="h-4 w-4" aria-hidden />}
@@ -70,7 +70,12 @@ export function DecisionSummaryCard({ entry }: DecisionSummaryCardProps): JSX.El
           )}
         </SummaryColumn>
 
-        <Separator orientation="vertical" className="hidden lg:block" />
+        <SummaryColumn
+          icon={<ShieldAlert className="h-4 w-4" aria-hidden />}
+          label={t("summary.mainRisk")}
+        >
+          <p className="text-sm text-foreground">{mainRisk}</p>
+        </SummaryColumn>
 
         <SummaryColumn
           icon={<Compass className="h-4 w-4" aria-hidden />}
