@@ -275,10 +275,44 @@ export function RecommendPage({ config }: RecommendPageProps): JSX.Element {
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">{pickText(entry.intro, locale)}</p>
+                {hasSelectionMetadata(result) ? (
+                  <div className="grid gap-3 rounded-md border border-border bg-muted/25 px-3 py-3 text-xs sm:grid-cols-3">
+                    {typeof result.fitScore === "number" ? (
+                      <MetricPill label={t("results.selection.fit")} value={result.fitScore} />
+                    ) : null}
+                    {typeof result.trustScore === "number" ? (
+                      <MetricPill label={t("results.selection.trust")} value={result.trustScore} />
+                    ) : null}
+                    {typeof result.riskScore === "number" ? (
+                      <MetricPill label={t("results.selection.risk")} value={result.riskScore} />
+                    ) : null}
+                    <div className="flex flex-wrap gap-2 sm:col-span-3">
+                      {result.confidence ? (
+                        <Badge variant="outline">
+                          {t("results.selection.confidence", { value: t(`results.confidence.${result.confidence}`) })}
+                        </Badge>
+                      ) : null}
+                      {result.recommendationType ? (
+                        <Badge variant="secondary">{t(`results.recommendationType.${result.recommendationType}`)}</Badge>
+                      ) : null}
+                      {result.evidenceUsed?.slice(0, 4).map((item) => (
+                        <Badge key={item} variant="success">{formatSignal(item)}</Badge>
+                      ))}
+                      {result.missingEvidence?.slice(0, 3).map((item) => (
+                        <Badge key={item} variant="warning">{formatSignal(item)}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="flex flex-col gap-2">
                   {result.reasons.map((reason, reasonIndex) => (
                     <p key={reasonIndex} className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
                       {pickText(reason, locale)}
+                    </p>
+                  ))}
+                  {result.tradeoffs?.map((tradeoff, tradeoffIndex) => (
+                    <p key={`tradeoff-${tradeoffIndex}`} className="rounded-md border border-amber-300/40 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                      {pickText(tradeoff, locale)}
                     </p>
                   ))}
                 </div>
@@ -289,4 +323,29 @@ export function RecommendPage({ config }: RecommendPageProps): JSX.Element {
       </div>
     </section>
   );
+}
+
+function MetricPill({ label, value }: { label: string; value: number }): JSX.Element {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md bg-background px-3 py-2">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-foreground">{Math.round(value)}</span>
+    </div>
+  );
+}
+
+function hasSelectionMetadata(result: RecommendationApiResult): boolean {
+  return Boolean(
+    typeof result.fitScore === "number" ||
+      typeof result.trustScore === "number" ||
+      typeof result.riskScore === "number" ||
+      result.confidence ||
+      result.recommendationType ||
+      result.evidenceUsed?.length ||
+      result.missingEvidence?.length
+  );
+}
+
+function formatSignal(value: string): string {
+  return value.replace(/[_:]/g, " ");
 }

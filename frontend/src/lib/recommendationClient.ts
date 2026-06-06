@@ -8,7 +8,15 @@ import {
 export interface RecommendationApiResult {
   agentId: string;
   score: number;
+  fitScore?: number;
+  trustScore?: number;
+  riskScore?: number;
+  confidence?: "high" | "medium" | "low";
+  recommendationType?: "best_fit" | "trusted_pick" | "fast_start" | "specialized";
   reasons: I18nText[];
+  tradeoffs?: I18nText[];
+  evidenceUsed?: string[];
+  missingEvidence?: string[];
   matchedScenarioIds: string[];
 }
 
@@ -84,7 +92,31 @@ function parseRecommendationApiResult(payload: unknown): RecommendationApiResult
   return {
     agentId: record.agentId.trim(),
     score: record.score,
+    ...(readOptionalScore(record.fitScore) !== undefined ? { fitScore: readOptionalScore(record.fitScore) } : {}),
+    ...(readOptionalScore(record.trustScore) !== undefined ? { trustScore: readOptionalScore(record.trustScore) } : {}),
+    ...(readOptionalScore(record.riskScore) !== undefined ? { riskScore: readOptionalScore(record.riskScore) } : {}),
+    ...(isRecommendationConfidence(record.confidence) ? { confidence: record.confidence } : {}),
+    ...(isRecommendationType(record.recommendationType) ? { recommendationType: record.recommendationType } : {}),
     reasons: record.reasons as I18nText[],
+    ...(Array.isArray(record.tradeoffs) ? { tradeoffs: record.tradeoffs as I18nText[] } : {}),
+    ...(Array.isArray(record.evidenceUsed)
+      ? { evidenceUsed: record.evidenceUsed.filter((value): value is string => typeof value === "string") }
+      : {}),
+    ...(Array.isArray(record.missingEvidence)
+      ? { missingEvidence: record.missingEvidence.filter((value): value is string => typeof value === "string") }
+      : {}),
     matchedScenarioIds: record.matchedScenarioIds.filter((value): value is string => typeof value === "string")
   };
+}
+
+function readOptionalScore(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function isRecommendationConfidence(value: unknown): value is NonNullable<RecommendationApiResult["confidence"]> {
+  return value === "high" || value === "medium" || value === "low";
+}
+
+function isRecommendationType(value: unknown): value is NonNullable<RecommendationApiResult["recommendationType"]> {
+  return value === "best_fit" || value === "trusted_pick" || value === "fast_start" || value === "specialized";
 }

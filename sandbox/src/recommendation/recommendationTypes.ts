@@ -2,10 +2,22 @@ export type RecommendationRiskLevel = "low" | "medium" | "high";
 export type RecommendationComplexity = "low" | "medium" | "high";
 export type RecommendationAccessType = "api" | "saas" | "cli" | "browser_ext" | "local" | "cloud";
 export type RecommendationPriority = "low-risk" | "fast-start" | "self-host" | "api-first" | "audited";
+export type RecommendationConfidence = "high" | "medium" | "low";
+export type RecommendationType = "best_fit" | "trusted_pick" | "fast_start" | "specialized";
 
 export interface RecommendationText {
   zh: string;
   en: string;
+}
+
+export interface RecommendationPlatformSignals {
+  platformRating?: number;
+  reputationScore?: number;
+  paidOrders?: number;
+  refundRate?: number;
+  accessBridgeSuccessRate?: number;
+  developerTrustStatus?: "unverified" | "verified" | "suspended";
+  auditCount?: number;
 }
 
 export interface RecommendationCatalogEntry {
@@ -22,6 +34,7 @@ export interface RecommendationCatalogEntry {
   complexity: RecommendationComplexity;
   hasOnboardingGuide: boolean;
   hasAuditEvidence?: boolean;
+  platformSignals?: RecommendationPlatformSignals;
   source?: "curated" | "listed" | "native";
 }
 
@@ -38,7 +51,15 @@ export interface RecommendationRequest {
 export interface RecommendationResult {
   agentId: string;
   score: number;
+  fitScore: number;
+  trustScore: number;
+  riskScore: number;
+  confidence: RecommendationConfidence;
+  recommendationType: RecommendationType;
   reasons: RecommendationText[];
+  tradeoffs: RecommendationText[];
+  evidenceUsed: string[];
+  missingEvidence: string[];
   matchedScenarioIds: string[];
 }
 

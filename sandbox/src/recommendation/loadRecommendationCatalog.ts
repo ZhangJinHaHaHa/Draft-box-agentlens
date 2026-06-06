@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
 import { defaultRecommendationCatalog } from "./defaultRecommendationCatalog";
-import type { RecommendationCatalogEntry } from "./recommendationTypes";
+import type { RecommendationCatalogEntry, RecommendationPlatformSignals } from "./recommendationTypes";
 
 export function loadRecommendationCatalog(catalogPath?: string): RecommendationCatalogEntry[] {
   if (!catalogPath) {
@@ -22,6 +22,7 @@ function parseCatalogEntry(value: unknown): RecommendationCatalogEntry {
   }
 
   const record = value as Record<string, unknown>;
+  const platformSignals = readPlatformSignals(record.platformSignals);
   const entry: RecommendationCatalogEntry = {
     id: readRequiredString(record, "id"),
     name: readRequiredString(record, "name"),
@@ -39,6 +40,7 @@ function parseCatalogEntry(value: unknown): RecommendationCatalogEntry {
     complexity: readEnum(record.complexity, ["low", "medium", "high"] as const, "complexity"),
     hasOnboardingGuide: Boolean(record.hasOnboardingGuide),
     ...(typeof record.hasAuditEvidence === "boolean" ? { hasAuditEvidence: record.hasAuditEvidence } : {}),
+    ...(platformSignals ? { platformSignals } : {}),
     ...(readOptionalString(record.source) ? { source: readEnum(record.source, ["curated", "listed", "native"] as const, "source") } : {})
   };
 
@@ -76,4 +78,49 @@ function readArrayEnum<T extends string>(value: unknown, allowed: readonly T[], 
     throw new Error(`${key} must be an array.`);
   }
   return value.map((item) => readEnum(item, allowed, key));
+}
+
+function readPlatformSignals(value: unknown): RecommendationPlatformSignals | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("platformSignals must be an object.");
+  }
+  const record = value as Record<string, unknown>;
+  return {
+    ...(readOptionalNumber(record.platformRating, "platformRating") !== undefined
+      ? { platformRating: readOptionalNumber(record.platformRating, "platformRating") }
+      : {}),
+    ...(readOptionalNumber(record.reputationScore, "reputationScore") !== undefined
+      ? { reputationScore: readOptionalNumber(record.reputationScore, "reputationScore") }
+      : {}),
+    ...(readOptionalNumber(record.paidOrders, "paidOrders") !== undefined
+      ? { paidOrders: readOptionalNumber(record.paidOrders, "paidOrders") }
+      : {}),
+    ...(readOptionalNumber(record.refundRate, "refundRate") !== undefined
+      ? { refundRate: readOptionalNumber(record.refundRate, "refundRate") }
+      : {}),
+    ...(readOptionalNumber(record.accessBridgeSuccessRate, "accessBridgeSuccessRate") !== undefined
+      ? { accessBridgeSuccessRate: readOptionalNumber(record.accessBridgeSuccessRate, "accessBridgeSuccessRate") }
+      : {}),
+    ...(readOptionalNumber(record.auditCount, "auditCount") !== undefined
+      ? { auditCount: readOptionalNumber(record.auditCount, "auditCount") }
+      : {}),
+    ...(readOptionalString(record.developerTrustStatus)
+      ? {
+          developerTrustStatus: readEnum(
+            record.developerTrustStatus,
+            ["unverified", "verified", "suspended"] as const,
+            "developerTrustStatus"
+          )
+        }
+      : {})
+  };
+}
+
+function readOptionalNumber(value: unknown, key: string): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${key} must be a finite number.`);
+  }
+  return value;
 }

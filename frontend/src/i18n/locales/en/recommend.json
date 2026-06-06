@@ -33,6 +33,23 @@
       "charged": "Charged {{count}} credits",
       "balanceAfter": "Balance {{count}}",
       "fallback": "Rules fallback"
+    },
+    "selection": {
+      "fit": "Fit",
+      "trust": "Trust",
+      "risk": "Risk",
+      "confidence": "Confidence: {{value}}"
+    },
+    "confidence": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "recommendationType": {
+      "best_fit": "Best fit",
+      "trusted_pick": "Trusted pick",
+      "fast_start": "Fast start",
+      "specialized": "Specialized match"
     }
   },
   "errors": {

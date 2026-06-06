@@ -48,7 +48,15 @@ describe("recommendationClient", () => {
               {
                 agentId: "support-agent",
                 score: 42,
+                fitScore: 81,
+                trustScore: 67,
+                riskScore: 18,
+                confidence: "high",
+                recommendationType: "best_fit",
                 reasons: [{ zh: "匹配", en: "Match" }],
+                tradeoffs: [{ zh: "需要接入知识库", en: "Requires knowledge-base setup" }],
+                evidenceUsed: ["scenario:customer-support"],
+                missingEvidence: ["platform_reputation"],
                 matchedScenarioIds: ["customer-support"]
               }
             ]
@@ -59,5 +67,14 @@ describe("recommendationClient", () => {
     );
 
     expect(response.results[0].score).toBe(42);
+    expect(response.results[0]).toMatchObject({
+      fitScore: 81,
+      trustScore: 67,
+      riskScore: 18,
+      confidence: "high",
+      recommendationType: "best_fit",
+      evidenceUsed: ["scenario:customer-support"],
+      missingEvidence: ["platform_reputation"]
+    });
   });
 });

@@ -33,6 +33,23 @@
       "charged": "已扣 {{count}} 积分",
       "balanceAfter": "余额 {{count}}",
       "fallback": "已回退到规则"
+    },
+    "selection": {
+      "fit": "匹配",
+      "trust": "可信",
+      "risk": "风险",
+      "confidence": "置信度：{{value}}"
+    },
+    "confidence": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "recommendationType": {
+      "best_fit": "最适合需求",
+      "trusted_pick": "可信优先",
+      "fast_start": "快速上手",
+      "specialized": "专项匹配"
     }
   },
   "errors": {

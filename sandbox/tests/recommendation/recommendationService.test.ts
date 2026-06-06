@@ -74,3 +74,64 @@ test("recommendFromCatalog includes self-hosted workflow candidates", () => {
   assert.ok(ids.includes("dify"));
   assert.ok(ids.includes("n8n-ai"));
 });
+
+test("recommendFromCatalog returns explainable selection metadata", () => {
+  const response = recommendFromCatalog(defaultRecommendationCatalog, {
+    query: "我想找一个适合代码审计和安全报告生成的 agent，最好可信",
+    priorities: ["audited"],
+    limit: 3
+  });
+  const first = response.results[0];
+
+  assert.ok(first.fitScore >= 1 && first.fitScore <= 100);
+  assert.ok(first.trustScore >= 0 && first.trustScore <= 100);
+  assert.ok(first.riskScore >= 0 && first.riskScore <= 100);
+  assert.ok(["high", "medium", "low"].includes(first.confidence));
+  assert.ok(["best_fit", "trusted_pick", "fast_start", "specialized"].includes(first.recommendationType));
+  assert.ok(first.evidenceUsed.length > 0);
+  assert.ok(first.missingEvidence.includes("platform_reputation"));
+});
+
+test("platform signals strengthen trust metadata for uploaded agents", () => {
+  const response = recommendFromCatalog(
+    [
+      {
+        id: "uploaded-security-agent",
+        name: "Uploaded Security Agent",
+        intro: {
+          zh: "面向代码审计和安全报告的上传 Agent。",
+          en: "Uploaded agent for code audit and security reports."
+        },
+        category: "Security",
+        tags: ["coding", "security", "audit"],
+        scenarioIds: ["developer-assistant"],
+        unsuitableScenarioIds: [],
+        riskLevel: "medium",
+        accessTypes: ["api"],
+        complexity: "medium",
+        hasOnboardingGuide: true,
+        hasAuditEvidence: true,
+        source: "native",
+        platformSignals: {
+          reputationScore: 880,
+          paidOrders: 12,
+          refundRate: 0.02,
+          accessBridgeSuccessRate: 0.98,
+          developerTrustStatus: "verified",
+          auditCount: 3
+        }
+      }
+    ],
+    {
+      query: "代码审计 安全报告 API 可信",
+      priorities: ["audited"],
+      limit: 1
+    }
+  );
+  const result = response.results[0];
+
+  assert.equal(result.agentId, "uploaded-security-agent");
+  assert.ok(result.trustScore >= 80);
+  assert.ok(result.evidenceUsed.includes("platform_reputation"));
+  assert.ok(!result.missingEvidence.includes("platform_usage"));
+});

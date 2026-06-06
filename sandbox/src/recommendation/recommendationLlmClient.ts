@@ -1,9 +1,11 @@
 import { recommendFromCatalog } from "./recommendationService";
 import type {
   RecommendationCatalogEntry,
+  RecommendationConfidence,
   RecommendationRequest,
   RecommendationResponse,
-  RecommendationText
+  RecommendationText,
+  RecommendationType
 } from "./recommendationTypes";
 
 export type RecommendationLlmProvider = "mock" | "openai";
@@ -91,7 +93,13 @@ function createOpenAiRecommendationLlmClient(
           messages: [
             {
               role: "system",
-              content: "You recommend AI agents only from the provided candidate catalog. Return strict JSON."
+              content: [
+                "You are AgentLens' selection advisor.",
+                "Primary objective: recommend the AI agents that best fit the user's stated need.",
+                "Use trust and risk signals as tie breakers and explain tradeoffs clearly.",
+                "Never recommend an agent outside the provided candidate catalog.",
+                "Return strict JSON only."
+              ].join(" ")
             },
             {
               role: "user",
@@ -105,17 +113,60 @@ function createOpenAiRecommendationLlmClient(
         throw new Error(`Recommendation LLM request failed with status ${response.status}.`);
       }
 
-      const body = await response.json();
+      const body = await readOpenAiResponseBody(response);
       return parseOpenAiRecommendationResponse(body, input);
     }
   };
 }
 
+async function readOpenAiResponseBody(response: Response): Promise<unknown> {
+  const raw = await response.text();
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("data:")) {
+    return parseOpenAiSseBody(trimmed);
+  }
+  return JSON.parse(trimmed);
+}
+
+function parseOpenAiSseBody(raw: string): unknown {
+  let content = "";
+  let lastJson: unknown;
+
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) continue;
+    const payload = trimmed.slice("data:".length).trim();
+    if (!payload || payload === "[DONE]") continue;
+    const parsed = JSON.parse(payload);
+    lastJson = parsed;
+    const choice = (parsed as { choices?: Array<Record<string, unknown>> }).choices?.[0];
+    const message = choice?.message as Record<string, unknown> | undefined;
+    const delta = choice?.delta as Record<string, unknown> | undefined;
+    const messageContent = extractOpenAiTextContent(message?.content);
+    const deltaContent = extractOpenAiTextContent(delta?.content);
+    if (messageContent) {
+      content += messageContent;
+    } else if (deltaContent) {
+      content += deltaContent;
+    }
+  }
+
+  if (content) {
+    return { choices: [{ message: { content } }] };
+  }
+  if (lastJson) {
+    return lastJson;
+  }
+  throw new Error("Recommendation LLM SSE response has no JSON payload.");
+}
+
 export function buildRecommendationLlmPrompt(input: RecommendationLlmInput): string {
   const allowedIds = new Set(input.baseline.results.map((result) => result.agentId));
+  const baselineById = new Map(input.baseline.results.map((result) => [result.agentId, result]));
   const candidates = input.catalog
     .filter((entry) => allowedIds.has(entry.id))
     .map((entry) => ({
+      ...baselineById.get(entry.id),
       id: entry.id,
       name: entry.name,
       intro: entry.intro,
@@ -126,16 +177,28 @@ export function buildRecommendationLlmPrompt(input: RecommendationLlmInput): str
       riskLevel: entry.riskLevel,
       accessTypes: entry.accessTypes,
       complexity: entry.complexity,
-      hasAuditEvidence: entry.hasAuditEvidence ?? false
+      hasAuditEvidence: entry.hasAuditEvidence ?? false,
+      source: entry.source ?? "listed",
+      platformSignals: entry.platformSignals ?? null
     }));
 
   return JSON.stringify({
-    task: "Rerank and explain the best AI agent recommendations for the user's request.",
+    task: "Rerank and explain the best-fit AI agent recommendations for the user's request.",
+    rankingPrinciples: [
+      "Optimize first for user need fit, not platform revenue or source preference.",
+      "Use trustScore, riskScore, audit evidence, platform reputation and missing evidence as transparent tie breakers.",
+      "Prefer agents with strong fit and acceptable risk over generic high-trust tools that do not match the request.",
+      "Surface tradeoffs and missing evidence instead of hiding uncertainty."
+    ],
     constraints: [
       "Only use agentId values from candidates.",
       "Do not invent products, prices, audits or capabilities.",
       "Return at most the requested limit.",
-      "Each reason must be short and user-facing in zh and en."
+      "Each reason and tradeoff must be short and user-facing in zh and en.",
+      "fitScore, trustScore and riskScore must be 0-100 integers.",
+      "confidence must be high, medium or low.",
+      "recommendationType must be best_fit, trusted_pick, fast_start or specialized.",
+      "evidenceUsed and missingEvidence must use short snake_case strings from candidate evidence when possible."
     ],
     userRequest: input.request,
     baselineInterpretation: input.baseline.interpretation,
@@ -146,7 +209,15 @@ export function buildRecommendationLlmPrompt(input: RecommendationLlmInput): str
         {
           agentId: "candidate id",
           score: 0,
+          fitScore: 0,
+          trustScore: 0,
+          riskScore: 0,
+          confidence: "high | medium | low",
+          recommendationType: "best_fit | trusted_pick | fast_start | specialized",
           reasons: [{ zh: "string", en: "string" }],
+          tradeoffs: [{ zh: "string", en: "string" }],
+          evidenceUsed: ["string"],
+          missingEvidence: ["string"],
           matchedScenarioIds: ["scenario id"]
         }
       ]
@@ -161,13 +232,43 @@ function parseOpenAiRecommendationResponse(
   const record = body as Record<string, unknown>;
   const choices = record.choices as Array<Record<string, unknown>> | undefined;
   const message = choices?.[0]?.message as Record<string, unknown> | undefined;
-  const content = typeof message?.content === "string" ? message.content : "";
+  const outputText = typeof record.output_text === "string" ? record.output_text : "";
+  const content = extractOpenAiTextContent(message?.content) || outputText;
 
   if (!content) {
     throw new Error("Recommendation LLM response has no content.");
   }
 
   return parseRecommendationLlmJson(content, input);
+}
+
+function extractOpenAiTextContent(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value
+    .map((item) => {
+      if (typeof item === "string") {
+        return item;
+      }
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return "";
+      }
+      const record = item as Record<string, unknown>;
+      if (typeof record.text === "string") {
+        return record.text;
+      }
+      if (typeof record.content === "string") {
+        return record.content;
+      }
+      return "";
+    })
+    .join("");
 }
 
 export function parseRecommendationLlmJson(
@@ -179,14 +280,14 @@ export function parseRecommendationLlmJson(
     throw new Error("Recommendation LLM response must be a JSON object.");
   }
 
-  const allowedIds = new Set(input.baseline.results.map((result) => result.agentId));
+  const baselineById = new Map(input.baseline.results.map((result) => [result.agentId, result]));
   const results = (parsed as { results?: unknown }).results;
   if (!Array.isArray(results)) {
     throw new Error("Recommendation LLM response results must be an array.");
   }
 
   const normalizedResults = results
-    .map((item) => normalizeLlmResult(item, allowedIds))
+    .map((item) => normalizeLlmResult(item, baselineById))
     .filter((item): item is RecommendationResponse["results"][number] => item !== undefined)
     .slice(0, input.baseline.interpretation.limit);
 
@@ -202,36 +303,54 @@ export function parseRecommendationLlmJson(
 
 function normalizeLlmResult(
   item: unknown,
-  allowedIds: Set<string>
+  baselineById: Map<string, RecommendationResponse["results"][number]>
 ): RecommendationResponse["results"][number] | undefined {
   if (!item || typeof item !== "object" || Array.isArray(item)) {
     return undefined;
   }
   const record = item as Record<string, unknown>;
-  if (typeof record.agentId !== "string" || !allowedIds.has(record.agentId)) {
+  if (typeof record.agentId !== "string") {
+    return undefined;
+  }
+  const baseline = baselineById.get(record.agentId);
+  if (!baseline) {
     return undefined;
   }
 
   const score = typeof record.score === "number" && Number.isFinite(record.score)
     ? record.score
-    : 1;
+    : baseline.score;
 
   return {
     agentId: record.agentId,
     score: Math.round(score * 100) / 100,
-    reasons: normalizeReasons(record.reasons),
+    fitScore: normalizeBoundedScore(record.fitScore, baseline.fitScore),
+    trustScore: normalizeBoundedScore(record.trustScore, baseline.trustScore),
+    riskScore: normalizeBoundedScore(record.riskScore, baseline.riskScore),
+    confidence: normalizeConfidence(record.confidence, baseline.confidence),
+    recommendationType: normalizeRecommendationType(record.recommendationType, baseline.recommendationType),
+    reasons: normalizeTextArray(record.reasons, baseline.reasons, 3),
+    tradeoffs: normalizeTextArray(record.tradeoffs, baseline.tradeoffs, 2),
+    evidenceUsed: normalizeStringArray(record.evidenceUsed, baseline.evidenceUsed, 8),
+    missingEvidence: normalizeStringArray(record.missingEvidence, baseline.missingEvidence, 6),
     matchedScenarioIds: Array.isArray(record.matchedScenarioIds)
       ? record.matchedScenarioIds.filter((item): item is string => typeof item === "string")
-      : []
+      : baseline.matchedScenarioIds
   };
 }
 
-function normalizeReasons(value: unknown): RecommendationText[] {
+function normalizeTextArray(
+  value: unknown,
+  fallback: RecommendationText[],
+  limit: number
+): RecommendationText[] {
   if (!Array.isArray(value)) {
-    return [{ zh: "LLM 根据需求语义给出推荐", en: "LLM selected this based on request semantics" }];
+    return fallback.length > 0
+      ? fallback.slice(0, limit)
+      : [{ zh: "LLM 根据需求语义给出推荐", en: "LLM selected this based on request semantics" }];
   }
 
-  const reasons = value
+  const texts = value
     .map((item) => {
       if (!item || typeof item !== "object" || Array.isArray(item)) {
         return undefined;
@@ -243,11 +362,38 @@ function normalizeReasons(value: unknown): RecommendationText[] {
       return { zh: record.zh.trim(), en: record.en.trim() };
     })
     .filter((item): item is RecommendationText => Boolean(item?.zh && item.en))
-    .slice(0, 3);
+    .slice(0, limit);
 
-  return reasons.length > 0
-    ? reasons
-    : [{ zh: "LLM 根据需求语义给出推荐", en: "LLM selected this based on request semantics" }];
+  return texts.length > 0 ? texts : fallback.slice(0, limit);
+}
+
+function normalizeBoundedScore(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.round(Math.max(0, Math.min(100, value)));
+}
+
+function normalizeConfidence(value: unknown, fallback: RecommendationConfidence): RecommendationConfidence {
+  return value === "high" || value === "medium" || value === "low" ? value : fallback;
+}
+
+function normalizeRecommendationType(value: unknown, fallback: RecommendationType): RecommendationType {
+  return value === "best_fit" || value === "trusted_pick" || value === "fast_start" || value === "specialized"
+    ? value
+    : fallback;
+}
+
+function normalizeStringArray(value: unknown, fallback: string[], limit: number): string[] {
+  if (!Array.isArray(value)) {
+    return fallback.slice(0, limit);
+  }
+  const strings = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, limit);
+  return strings.length > 0 ? strings : fallback.slice(0, limit);
 }
 
 function withLlmReason(reasons: RecommendationText[]): RecommendationText[] {
