@@ -1,7 +1,60 @@
 {
   "page": {
     "title": "需求推荐",
-    "subtitle": "告诉我们你要做什么、看重什么——我们再给候选。",
-    "comingSoon": "推荐引擎将在阶段二上线。当前你可以先去 “Agent 列表” 用筛选定位候选。"
+    "subtitle": "告诉我们你要做什么、看重什么——我们再给候选。"
+  },
+  "form": {
+    "label": "你的需求",
+    "placeholder": "例如：我需要一个低风险的客服知识库 Agent，最好有 API，能快速接入现有帮助中心。",
+    "submit": "生成推荐",
+    "submitFree": "生成免费推荐",
+    "submitPaid": "消耗积分推荐",
+    "modes": {
+      "free": "免费规则",
+      "paid": "付费 LLM"
+    }
+  },
+  "platform": {
+    "title": "本地 Web2 账户",
+    "cost": "每次 {{count}} 积分",
+    "connect": "Mock Google",
+    "refresh": "刷新账户",
+    "connected": "已连接：{{email}}",
+    "disconnected": "连接 mock Google 后可消耗平台积分。",
+    "balance": "{{count}} 积分"
+  },
+  "results": {
+    "idle": "输入需求后生成推荐。",
+    "empty": "暂时没有匹配的候选，可以换一种场景或减少限制。",
+    "open": "查看",
+    "meta": {
+      "free": "免费规则推荐",
+      "paid": "付费 LLM 推荐",
+      "charged": "已扣 {{count}} 积分",
+      "balanceAfter": "余额 {{count}}",
+      "fallback": "已回退到规则"
+    },
+    "selection": {
+      "fit": "匹配",
+      "trust": "可信",
+      "risk": "风险",
+      "confidence": "置信度：{{value}}"
+    },
+    "confidence": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "recommendationType": {
+      "best_fit": "最适合需求",
+      "trusted_pick": "可信优先",
+      "fast_start": "快速上手",
+      "specialized": "专项匹配"
+    }
+  },
+  "errors": {
+    "generic": "推荐服务暂时不可用。",
+    "platformApiMissing": "缺少 VITE_PLATFORM_API_URL，无法使用付费推荐。",
+    "connectFirst": "请先连接 mock Google 账户。"
   }
 }

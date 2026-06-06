@@ -14,6 +14,7 @@ import { AgentListPage } from "@/pages/AgentListPage";
 import { AuditReportPage } from "@/pages/AuditReportPage";
 import { HomePage } from "@/pages/HomePage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
+import { RecommendPage } from "@/pages/RecommendPage";
 
 interface AppRoutesProps {
   config: AppConfig;
@@ -31,11 +32,6 @@ function LocaleRedirect(): JSX.Element {
 function ComparePagePlaceholder(): JSX.Element {
   const { t } = useTranslation("compare");
   return <PlaceholderPage title={t("page.title")} description={t("page.subtitle")} ctaHref="/agents" />;
-}
-
-function RecommendPagePlaceholder(): JSX.Element {
-  const { t } = useTranslation("recommend");
-  return <PlaceholderPage title={t("page.title")} description={t("page.comingSoon")} ctaHref="/agents" />;
 }
 
 function PublishPagePlaceholder(): JSX.Element {
@@ -73,7 +69,7 @@ export function AppRoutes({ config }: AppRoutesProps): JSX.Element {
             element={<AuditReportPage config={config} />}
           />
           <Route path="compare" element={<ComparePagePlaceholder />} />
-          <Route path="recommend" element={<RecommendPagePlaceholder />} />
+          <Route path="recommend" element={<RecommendPage config={config} />} />
           <Route path="publish" element={<PublishPagePlaceholder />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
