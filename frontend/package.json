@@ -10,7 +10,8 @@
     "validate:catalog": "node scripts/validateCatalog.mjs",
     "env:polygon-edge-local": "node scripts/printPolygonEdgeLocalEnv.js",
     "env:polygon-edge-local:write": "node scripts/printPolygonEdgeLocalEnv.js --write",
-    "smoke:polygon-edge-local": "node scripts/runLocalFrontendSmoke.js"
+    "smoke:polygon-edge-local": "node scripts/runLocalFrontendSmoke.js",
+    "smoke:a-flow": "node scripts/runAFlowSmoke.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",

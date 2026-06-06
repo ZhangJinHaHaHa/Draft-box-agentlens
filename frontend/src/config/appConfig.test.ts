@@ -49,7 +49,9 @@ describe("readAppConfig", () => {
         VITE_AUDIT_REGISTRY_ADDRESS: "0x1111111111111111111111111111111111111111",
         VITE_AUDIT_CHAIN_ID: "31337",
         VITE_AUDIT_REPORT_GATEWAY_URL: "https://gateway.example/ipfs/",
-        VITE_AUDIT_APPEAL_API_URL: "https://api.example.com/appeals"
+        VITE_AUDIT_APPEAL_API_URL: "https://api.example.com/appeals",
+        VITE_RECOMMENDATION_API_URL: "https://api.example.com/recommend",
+        VITE_RENTAL_WEB2_URL: "https://orders.example.com/apply"
       })
     ).toEqual({
       ok: true,
@@ -58,7 +60,9 @@ describe("readAppConfig", () => {
         registryAddress: "0x1111111111111111111111111111111111111111",
         chainId: 31337,
         reportGatewayUrl: "https://gateway.example/ipfs/",
-        appealApiUrl: "https://api.example.com/appeals"
+        appealApiUrl: "https://api.example.com/appeals",
+        recommendationApiUrl: "https://api.example.com/recommend",
+        rentalWeb2Url: "https://orders.example.com/apply"
       }
     });
   });

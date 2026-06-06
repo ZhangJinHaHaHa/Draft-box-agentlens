@@ -1,0 +1,255 @@
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Check, X, ShieldAlert, ShieldCheck, CheckCircle2, Trash2 } from "lucide-react";
+
+import { PageHeading } from "@/components/layout/PageHeading";
+import { Button } from "@/components/ui/button";
+import { useLocale } from "@/i18n/useLocale";
+import { useCompareSelection } from "@/hooks/useCompareSelection";
+import { useCatalog } from "@/hooks/useCatalog";
+import type { AppConfig } from "@/config/appConfig";
+import { compareAgents, getCompareAttributeDiffs, type CompareAttributeKey } from "@/domain/compare";
+import { buildCompareNarrative } from "@/domain/compareNarrative";
+import { hasAuditEvidence } from "@/domain/catalog";
+import { computeTrustTier } from "@/domain/trustTier";
+import { pickText } from "@/domain/i18nText";
+import { TrustTierBadge } from "@/components/trust/TrustTierBadge";
+import { cn } from "@/lib/utils";
+
+export function ComparePage({ config }: { config: AppConfig }): JSX.Element {
+  const { t } = useTranslation("compare");
+  const { t: tc } = useTranslation("common");
+  const { buildPath, locale } = useLocale();
+  const { ids, hasOverflow, removeId, clearIds } = useCompareSelection();
+  const catalog = useCatalog({ config });
+
+  const agents = ids
+    .map((id) => catalog.byId.get(id))
+    .filter((a): a is NonNullable<typeof a> => a !== undefined);
+
+  if (agents.length < 2) {
+    return (
+      <section className="container-page py-24 text-center">
+        <PageHeading title={t("page.title")} description={t("page.emptyDesc")} />
+        <div className="mt-8 flex justify-center gap-3">
+          <Button asChild>
+            <Link to={buildPath("/agents")}>{t("page.back")}</Link>
+          </Button>
+        </div>
+      </section>
+    );
+  }
+
+  const result = compareAgents(agents);
+  const diffs = getCompareAttributeDiffs(agents);
+  const narrative = buildCompareNarrative(agents, result, locale);
+
+  function tdClass(key: CompareAttributeKey): string {
+    return cn(
+      "p-4 align-top transition-colors",
+      diffs[key] ? "bg-foreground/[0.03] text-foreground" : "text-muted-foreground/80"
+    );
+  }
+
+  return (
+    <section className="container-page py-12">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <PageHeading title={t("page.title")} description={t("page.subtitle")} />
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={clearIds}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+            {t("page.clear")}
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to={buildPath("/agents")}>{t("page.back")}</Link>
+          </Button>
+        </div>
+      </div>
+
+      {hasOverflow ? (
+        <div className="surface-card mb-6 border-warning/40 bg-warning/10 px-5 py-4 text-sm text-foreground">
+          {t("page.limit")}
+        </div>
+      ) : null}
+
+      {/* Conclusion Banner */}
+      <div className={cn(
+        "surface-card mb-8 p-5",
+        result.conclusion === "try-first" ? "border-success/40 ring-1 ring-success/10" :
+        result.conclusion === "formal-integration" ? "border-primary/40 ring-1 ring-primary/10" :
+        result.conclusion === "avoid-for-now" ? "border-danger/40 ring-1 ring-danger/10" :
+        "border-border/70"
+      )}>
+        <h3 className="mb-2 font-medium flex items-center gap-2 text-lg">
+          {result.conclusion === "avoid-for-now" ? (
+            <ShieldAlert className="w-5 h-5 text-red-500" aria-hidden />
+          ) : (
+            <ShieldCheck className={cn("w-5 h-5", result.conclusion === "try-first" ? "text-green-500" : "text-blue-500")} aria-hidden />
+          )}
+          {t("page.conclusion")}: {t(`page.rules.${result.conclusion}`)}
+        </h3>
+        {result.winnerId && (
+          <p className="text-sm text-muted-foreground opacity-90">
+            {t("page.winner")}: <strong className="text-foreground">{catalog.byId.get(result.winnerId)?.name}</strong>
+          </p>
+        )}
+      </div>
+
+      {/* Compare Matrix */}
+      <div className="surface-card overflow-x-auto">
+        <table className="w-full min-w-[800px] border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className="w-48 border-b bg-secondary/30 p-4 text-left font-medium text-muted-foreground"></th>
+              {agents.map((agent) => (
+                <th key={agent.id} className="border-b p-4 text-left font-medium relative group">
+                  <div className="flex justify-between items-start">
+                    <Link to={buildPath(`/agent/${agent.id}`)} className="text-lg hover:underline">
+                      {agent.name}
+                      {agent.id === result.winnerId && (
+                        <CheckCircle2 className="inline ml-2 w-4 h-4 text-green-500 mb-1" />
+                      )}
+                    </Link>
+                    <button
+                      onClick={() => removeId(agent.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/70 border-b border-border/70">
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.scenario")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("scenario")}>
+                  <div className="flex flex-wrap gap-1">
+                    {agent.scenarios.map(s => (
+                      <span key={s.id} className="rounded-md border bg-secondary/50 px-2 py-0.5 text-[11px] backdrop-blur">
+                        {pickText(s.label, locale)}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.unsuitableScenario")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("unsuitableScenario")}>
+                  <div className="flex flex-wrap gap-1">
+                    {agent.unsuitableScenarios.length ? agent.unsuitableScenarios.map(s => (
+                      <span key={s.id} className="rounded-md border border-red-200 px-2 py-0.5 text-[11px] text-red-600 backdrop-blur dark:border-red-900 dark:text-red-400">
+                        {pickText(s.label, locale)}
+                      </span>
+                    )) : <span className="text-muted-foreground">-</span>}
+                  </div>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.trustTier")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("trustTier")}>
+                  <TrustTierBadge result={computeTrustTier({ entry: agent })} />
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.riskLevel")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("riskLevel")}>
+                  <span className={cn(
+                    "font-medium",
+                    agent.riskLevel === "high" ? "text-red-500" :
+                    agent.riskLevel === "medium" ? "text-yellow-500" : "text-green-500"
+                  )}>
+                    {tc(`risk.${agent.riskLevel}`)}
+                  </span>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.complexity")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("complexity")}>
+                  {tc(`complexity.${agent.complexity}`)}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.auditEvidence")}</td>
+              {agents.map((agent) => {
+                const hasEvidence = hasAuditEvidence(agent);
+                return (
+                  <td key={agent.id} className={tdClass("auditEvidence")}>
+                    {hasEvidence ? (
+                      <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                        <Check className="w-4 h-4" /> {t("page.has")}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <X className="w-4 h-4" /> {t("page.none")}
+                      </span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.onboarding")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("onboarding")}>
+                  {agent.hasOnboardingGuide ? (
+                    <span className="flex items-center gap-1 text-foreground">
+                      <Check className="w-4 h-4" /> {t("page.has")}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <X className="w-4 h-4" /> {t("page.none")}
+                    </span>
+                  )}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.pricing")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("pricing")}>
+                  {agent.pricingHint ? pickText(agent.pricingHint, locale) : <span className="text-muted-foreground">-</span>}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.officialRoute")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("officialRoute")}>
+                  {agent.officialUrl ? (
+                    <a href={agent.officialUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                      Link
+                    </a>
+                  ) : <span className="text-muted-foreground">-</span>}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {narrative ? (
+        <div className="surface-card mt-8 p-5">
+          <h3 className="mb-2 text-lg font-medium">{t("narrative.title")}</h3>
+          <p className="text-sm leading-relaxed text-muted-foreground">{narrative}</p>
+        </div>
+      ) : null}
+    </section>
+  );
+}

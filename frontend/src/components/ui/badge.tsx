@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors",
+  "theme-badge inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors",
   {
     variants: {
       variant: {
@@ -34,7 +34,8 @@ export interface BadgeProps
     VariantProps<typeof badgeVariants> {}
 
 export function Badge({ className, variant, ...props }: BadgeProps): JSX.Element {
-  return <span className={cn(badgeVariants({ variant }), className)} {...props} />;
+  const resolvedVariant = variant ?? "default";
+  return <span className={cn(badgeVariants({ variant: resolvedVariant }), className)} data-variant={resolvedVariant} {...props} />;
 }
 
 export { badgeVariants };

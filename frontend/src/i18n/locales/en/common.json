@@ -31,9 +31,18 @@
   "theme": {
     "label": "Theme",
     "light": "Light",
-    "dark": "Dark"
+    "dark": "Dark",
+    "artLabel": "Background style",
+    "art": {
+      "swiss": "Swiss Precision",
+      "atelier": "Artisanal Professional",
+      "nocturne": "Post-Impressionist Modern",
+      "pixel": "Bit-Perfect Retro",
+      "crimson": "Crimson Trust & Parchment"
+    }
   },
   "agentSource": {
+    "marketplace": "Expert",
     "curated": "Curated",
     "listed": "Listed",
     "native": "Platform native"
@@ -49,12 +58,12 @@
     "high": "Complex"
   },
   "access": {
-    "api": "API",
-    "saas": "SaaS",
-    "cli": "CLI",
-    "browser_ext": "Browser ext",
-    "local": "Local",
-    "cloud": "Cloud"
+    "api": "API / integration",
+    "saas": "Use in browser",
+    "cli": "Command line",
+    "browser_ext": "Browser extension",
+    "local": "Runs on your device",
+    "cloud": "Runs on their cloud"
   },
   "status": {
     "loading": "Loading…",

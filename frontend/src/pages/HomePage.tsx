@@ -1,5 +1,5 @@
 import { ArrowRight, Compass, Eye, Lightbulb, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -12,6 +12,9 @@ import { useLocale } from "@/i18n/useLocale";
 import { cn } from "@/lib/utils";
 import type { AppConfig } from "@/config/appConfig";
 import { useCatalog } from "@/hooks/useCatalog";
+import { buildCatalogFacets, filtersToSearchParams } from "@/domain/filters";
+import { buildNeedParserTaxonomy, toFiltersFromNeedParse } from "@/domain/needParser";
+import { parseNeedWithLlm } from "@/lib/needParserClient";
 
 interface HomePageProps {
   config: AppConfig;
@@ -36,26 +39,51 @@ const WHY_ICONS: Record<string, JSX.Element> = {
 
 export function HomePage({ config }: HomePageProps): JSX.Element {
   const navigate = useNavigate();
-  const { buildPath } = useLocale();
+  const { buildPath, locale } = useLocale();
   const { t } = useTranslation("home");
   const { t: tc } = useTranslation("common");
 
-  const { bySource, nativeStatus, nativeError } = useCatalog({ config });
+  const { entries, bySource, nativeStatus, nativeError } = useCatalog({ config });
+  const facets = useMemo(() => buildCatalogFacets(entries), [entries]);
+  const scenarioTiles = useMemo(
+    () => SCENARIO_TILES.filter((tile) => facets.scenarioIds.includes(tile.scenarioId)),
+    [facets.scenarioIds]
+  );
   const curatedShowcase = bySource.curated.slice(0, 6);
   const nativeShowcase = bySource.native.slice(0, 3);
 
   const [query, setQuery] = useState("");
+  const [isParsingNeed, setIsParsingNeed] = useState(false);
+  const [needParseError, setNeedParseError] = useState("");
 
-  function submitSearch(): void {
-    const params = new URLSearchParams();
-    if (query.trim()) {
-      params.set("q", query.trim());
+  async function submitSearch(): Promise<void> {
+    const trimmed = query.trim();
+    setNeedParseError("");
+    if (!trimmed) {
+      navigate({ pathname: buildPath("/agents") });
+      return;
     }
-    const search = params.toString();
-    navigate({
-      pathname: buildPath("/agents"),
-      search: search ? `?${search}` : undefined
+
+    setIsParsingNeed(true);
+    const parsed = await parseNeedWithLlm({
+      query: trimmed,
+      locale,
+      taxonomy: buildNeedParserTaxonomy(entries)
     });
+    setIsParsingNeed(false);
+
+    if (parsed.ok) {
+      const filters = toFiltersFromNeedParse(parsed.result, trimmed);
+      const params = filtersToSearchParams(filters);
+      const search = params.toString();
+      navigate({
+        pathname: buildPath("/agents"),
+        search: search ? `?${search}` : undefined
+      });
+      return;
+    }
+
+    setNeedParseError(parsed.error || t("hero.llmUnavailable"));
   }
 
   return (
@@ -73,23 +101,32 @@ export function HomePage({ config }: HomePageProps): JSX.Element {
             className="mt-2 flex w-full max-w-2xl flex-col gap-3 sm:flex-row"
             onSubmit={(event) => {
               event.preventDefault();
-              submitSearch();
+              void submitSearch();
             }}
           >
             <Input
               autoFocus
               type="search"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                if (needParseError) setNeedParseError("");
+              }}
               placeholder={t("hero.searchPlaceholder")}
               className="h-12 flex-1 text-base"
               aria-label={tc("actions.search")}
             />
-            <Button type="submit" size="lg">
-              {t("hero.primaryCta")}
+            <Button type="submit" size="lg" disabled={isParsingNeed}>
+              {isParsingNeed ? t("hero.parsingCta") : t("hero.primaryCta")}
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
           </form>
+          {needParseError ? (
+            <p className="text-sm font-medium text-destructive" role="alert">
+              {t("hero.llmUnavailable")}
+            </p>
+          ) : null}
+          <p className="text-xs text-muted-foreground">{t("hero.llmDemoNotice")}</p>
 
           <div className="flex flex-wrap items-center gap-3">
             <Button asChild variant="link" className="px-0 text-sm">
@@ -108,17 +145,17 @@ export function HomePage({ config }: HomePageProps): JSX.Element {
       <section className="container-page py-20">
         <SectionHeading title={t("scenarios.title")} description={t("scenarios.subtitle")} />
         <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {SCENARIO_TILES.map((tile) => (
+          {scenarioTiles.map((tile, index) => (
             <Link
               key={tile.key}
               to={`${buildPath("/agents")}?scenario=${tile.scenarioId}`}
               className={cn(
-                "group flex h-28 flex-col justify-between rounded-lg border border-border bg-card p-4 transition-colors",
+                "group surface-card-interactive flex h-28 flex-col justify-between p-4",
                 "hover:border-foreground/40"
               )}
             >
               <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                {String(SCENARIO_TILES.indexOf(tile) + 1).padStart(2, "0")}
+                {String(index + 1).padStart(2, "0")}
               </span>
               <div className="flex items-end justify-between">
                 <span className="text-base font-medium text-foreground">
