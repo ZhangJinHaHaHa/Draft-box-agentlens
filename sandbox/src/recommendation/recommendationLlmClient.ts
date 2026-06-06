@@ -103,11 +103,12 @@ function createOpenAiRecommendationLlmClient(
               {
                 role: "system",
                 content: [
-                  "You are AgentLens' selection advisor.",
-                  "Primary objective: recommend the AI agents that best fit the user's stated need.",
-                  "Use trust and risk signals as tie breakers and explain tradeoffs clearly.",
+                  "You are AgentLens' platform capability analyst.",
+                  "Your job is to compare AI agents listed on the AgentLens platform and recommend the best fit for the user's stated need.",
+                  "Treat the provided candidate capability profiles as the source of truth.",
+                  "Use trust, risk, deployment and platform evidence as explicit tie breakers.",
                   "Never recommend an agent outside the provided candidate catalog.",
-                  "Return strict JSON only."
+                  "Return strict JSON only, with no hidden reasoning or markdown."
                 ].join(" ")
               },
               {
@@ -184,27 +185,44 @@ function parseOpenAiSseBody(raw: string): unknown {
 export function buildRecommendationLlmPrompt(input: RecommendationLlmInput): string {
   const allowedIds = new Set(input.baseline.results.map((result) => result.agentId));
   const baselineById = new Map(input.baseline.results.map((result) => [result.agentId, result]));
+  const baselineRankById = new Map(input.baseline.results.map((result, index) => [result.agentId, index + 1]));
   const candidates = input.catalog
     .filter((entry) => allowedIds.has(entry.id))
-    .map((entry) => ({
-      ...baselineById.get(entry.id),
-      id: entry.id,
-      name: entry.name,
-      intro: entry.intro,
-      category: entry.category,
-      tags: entry.tags,
-      scenarioIds: entry.scenarioIds,
-      unsuitableScenarioIds: entry.unsuitableScenarioIds,
-      riskLevel: entry.riskLevel,
-      accessTypes: entry.accessTypes,
-      complexity: entry.complexity,
-      hasAuditEvidence: entry.hasAuditEvidence ?? false,
-      source: entry.source ?? "listed",
-      platformSignals: entry.platformSignals ?? null
-    }));
+    .map((entry) => buildCandidateCapabilityProfile(entry, baselineById, baselineRankById));
 
   return JSON.stringify({
-    task: "Rerank and explain the best-fit AI agent recommendations for the user's request.",
+    task: "Analyze AgentLens platform agents and return the best recommendations for the user's request.",
+    platformDecisionContext: {
+      sourceOfTruth: "Use only the supplied candidates and their capabilityProfile/platformEvidence fields.",
+      candidateMeaning: "Each candidate is an AI agent or AI tool available in the AgentLens catalog.",
+      fitSignals: [
+        "summary, category and capabilityTags describe what the agent can do.",
+        "useCases describe scenarios where the agent is expected to work.",
+        "notFor describes scenarios where the agent is a poor fit.",
+        "accessModes and deploymentComplexity describe adoption and integration effort."
+      ],
+      trustSignals: [
+        "auditEvidenceAvailable, onboardingGuideAvailable and catalogSource are platform trust signals.",
+        "platformEvidence may include paid orders, refunds, ratings, reputation score, audits and developer trust status."
+      ]
+    },
+    analysisInstructions: [
+      "Infer the user's job-to-be-done, required capabilities, constraints and risk tolerance from userRequest.",
+      "Compare every candidate's capabilityProfile against those needs before ranking.",
+      "Prefer a specialized agent when its useCases and capabilityTags directly match the request.",
+      "Prefer lower-risk or audited agents when the user asks for safety, production use, compliance or team adoption.",
+      "Prefer lower-complexity or onboarding-supported agents when the user asks for quick start or easy adoption.",
+      "Penalize candidates whose notFor scenarios conflict with the request.",
+      "Do not over-rank a candidate only because the rules baseline scored it highly; use baselineAssessment as a starting point, not a final answer.",
+      "Reasons must cite concrete capability or platform evidence from the candidate, such as useCases, accessModes, auditEvidenceAvailable, platformEvidence or capabilityTags.",
+      "Tradeoffs must state the most important mismatch, missing evidence, risk or setup burden."
+    ],
+    scoringRubric: {
+      fitScore: "0-100 semantic fit between userRequest and candidate capabilityProfile.",
+      trustScore: "0-100 confidence from audit evidence, onboarding guides, catalog source and platformEvidence.",
+      riskScore: "0-100 operational risk; lower is safer. Consider candidate riskLevel, missing evidence, refunds and complexity.",
+      score: "Overall rank score balancing fit first, then trust/risk/deployment evidence."
+    },
     rankingPrinciples: [
       "Optimize first for user need fit, not platform revenue or source preference.",
       "Use trustScore, riskScore, audit evidence, platform reputation and missing evidence as transparent tie breakers.",
@@ -213,7 +231,7 @@ export function buildRecommendationLlmPrompt(input: RecommendationLlmInput): str
     ],
     constraints: [
       "Only use agentId values from candidates.",
-      "Do not invent products, prices, audits or capabilities.",
+      "Do not invent products, prices, audits, integrations, platform usage or capabilities.",
       "Return at most the requested limit.",
       "Each reason and tradeoff must be short and user-facing in zh and en.",
       "fitScore, trustScore and riskScore must be 0-100 integers.",
@@ -223,7 +241,6 @@ export function buildRecommendationLlmPrompt(input: RecommendationLlmInput): str
     ],
     userRequest: input.request,
     baselineInterpretation: input.baseline.interpretation,
-    baselineResults: input.baseline.results,
     candidates,
     outputSchema: {
       results: [
@@ -244,6 +261,81 @@ export function buildRecommendationLlmPrompt(input: RecommendationLlmInput): str
       ]
     }
   });
+}
+
+function buildCandidateCapabilityProfile(
+  entry: RecommendationCatalogEntry,
+  baselineById: Map<string, RecommendationResponse["results"][number]>,
+  baselineRankById: Map<string, number>
+): {
+  id: string;
+  name: string;
+  vendor?: string;
+  capabilityProfile: {
+    summary: RecommendationText;
+    category: string;
+    capabilityTags: string[];
+    useCases: string[];
+    notFor: string[];
+    accessModes: RecommendationCatalogEntry["accessTypes"];
+    deploymentComplexity: RecommendationCatalogEntry["complexity"];
+    operationalRisk: RecommendationCatalogEntry["riskLevel"];
+    onboardingGuideAvailable: boolean;
+    auditEvidenceAvailable: boolean;
+    catalogSource: NonNullable<RecommendationCatalogEntry["source"]>;
+  };
+  platformEvidence: RecommendationCatalogEntry["platformSignals"] | null;
+  baselineAssessment?: {
+    rank: number;
+    score: number;
+    fitScore: number;
+    trustScore: number;
+    riskScore: number;
+    confidence: RecommendationConfidence;
+    recommendationType: RecommendationType;
+    reasons: RecommendationText[];
+    tradeoffs: RecommendationText[];
+    evidenceUsed: string[];
+    missingEvidence: string[];
+    matchedScenarioIds: string[];
+  };
+} {
+  const baseline = baselineById.get(entry.id);
+  return {
+    id: entry.id,
+    name: entry.name,
+    ...(entry.vendor ? { vendor: entry.vendor } : {}),
+    capabilityProfile: {
+      summary: entry.intro,
+      category: entry.category,
+      capabilityTags: entry.tags,
+      useCases: entry.scenarioIds,
+      notFor: entry.unsuitableScenarioIds,
+      accessModes: entry.accessTypes,
+      deploymentComplexity: entry.complexity,
+      operationalRisk: entry.riskLevel,
+      onboardingGuideAvailable: entry.hasOnboardingGuide,
+      auditEvidenceAvailable: entry.hasAuditEvidence ?? false,
+      catalogSource: entry.source ?? "listed"
+    },
+    platformEvidence: entry.platformSignals ?? null,
+    ...(baseline ? {
+      baselineAssessment: {
+        rank: baselineRankById.get(entry.id) ?? 0,
+        score: baseline.score,
+        fitScore: baseline.fitScore,
+        trustScore: baseline.trustScore,
+        riskScore: baseline.riskScore,
+        confidence: baseline.confidence,
+        recommendationType: baseline.recommendationType,
+        reasons: baseline.reasons,
+        tradeoffs: baseline.tradeoffs,
+        evidenceUsed: baseline.evidenceUsed,
+        missingEvidence: baseline.missingEvidence,
+        matchedScenarioIds: baseline.matchedScenarioIds
+      }
+    } : {})
+  };
 }
 
 function parseOpenAiRecommendationResponse(

@@ -61,8 +61,12 @@ test("buildRecommendationLlmPrompt only includes baseline candidates", () => {
 
   const candidateIds = prompt.candidates.map((candidate: { id: string }) => candidate.id);
   assert.deepEqual(candidateIds, baseline.results.map((result) => result.agentId));
+  assert.equal(prompt.task, "Analyze AgentLens platform agents and return the best recommendations for the user's request.");
   assert.equal(prompt.rankingPrinciples[0], "Optimize first for user need fit, not platform revenue or source preference.");
-  assert.equal(typeof prompt.candidates[0].fitScore, "number");
+  assert.equal(prompt.platformDecisionContext.sourceOfTruth, "Use only the supplied candidates and their capabilityProfile/platformEvidence fields.");
+  assert.ok(prompt.analysisInstructions.some((instruction: string) => instruction.includes("Compare every candidate's capabilityProfile")));
+  assert.equal(Array.isArray(prompt.candidates[0].capabilityProfile.capabilityTags), true);
+  assert.equal(typeof prompt.candidates[0].baselineAssessment.fitScore, "number");
   assert.ok(prompt.constraints.some((constraint: string) => constraint.includes("fitScore")));
 });
 
