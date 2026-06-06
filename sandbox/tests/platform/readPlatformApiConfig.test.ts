@@ -50,6 +50,6 @@ test("readPlatformApiConfig defaults OpenAI recommendation timeout", () => {
       PLATFORM_RECOMMENDATION_LLM_API_KEY: "sk-test",
       PLATFORM_RECOMMENDATION_LLM_MODEL: "test-model"
     }).recommendationLlm.timeoutMs,
-    12_000
+    30_000
   );
 });

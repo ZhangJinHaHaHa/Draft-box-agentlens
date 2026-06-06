@@ -77,7 +77,7 @@ function readRecommendationLlmConfig(
   const apiBaseUrl = readOptionalString(env.PLATFORM_RECOMMENDATION_LLM_API_BASE_URL);
   const timeoutMs = readPositiveInt(
     env.PLATFORM_RECOMMENDATION_LLM_TIMEOUT_MS,
-    12_000,
+    30_000,
     "PLATFORM_RECOMMENDATION_LLM_TIMEOUT_MS"
   );
 

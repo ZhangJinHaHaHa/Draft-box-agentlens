@@ -33,7 +33,7 @@ export interface RecommendationLlmInput {
 export type FetchLike = typeof fetch;
 
 const OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
-const OPENAI_DEFAULT_TIMEOUT_MS = 12_000;
+const OPENAI_DEFAULT_TIMEOUT_MS = 30_000;
 
 export function createRecommendationLlmClient(
   config: RecommendationLlmConfig,

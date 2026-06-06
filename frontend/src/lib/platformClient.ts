@@ -65,7 +65,7 @@ export interface PaidLlmRecommendationResponse {
   recommendation: RecommendationApiResponse;
 }
 
-const PAID_LLM_RECOMMENDATION_TIMEOUT_MS = 20_000;
+const PAID_LLM_RECOMMENDATION_TIMEOUT_MS = 45_000;
 
 export async function createMockGoogleUser(
   apiBaseUrl: string,
