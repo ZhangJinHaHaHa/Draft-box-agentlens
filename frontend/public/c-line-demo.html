@@ -166,6 +166,13 @@
         gap: 12px;
       }
 
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+      }
+
       .card {
         border: 1px solid #dbe2ea;
         border-radius: 8px;
@@ -218,9 +225,26 @@
         color: #6b7785;
       }
 
+      .kv {
+        display: grid;
+        grid-template-columns: 128px minmax(0, 1fr);
+        gap: 6px 12px;
+        margin-top: 8px;
+        font-size: 13px;
+      }
+
+      .kv span {
+        color: #6b7785;
+      }
+
+      .kv code {
+        word-break: break-all;
+      }
+
       @media (max-width: 840px) {
         .hero,
-        .grid {
+        .grid,
+        .feature-grid {
           display: block;
         }
 
@@ -272,8 +296,44 @@
         </section>
       </div>
 
+      <section class="feature-grid">
+        <div class="panel stack">
+          <h2>3. 订单 / 支付 / 访问权桥接</h2>
+          <p>演示 Web2 付款后，平台 operator wallet 写链上访问权的本地模拟。</p>
+          <div class="row">
+            <button id="accessFlowBtn" type="button">跑购买 + 访问权桥接</button>
+            <button id="fullFlowBtn" class="secondary" type="button">跑完整 C 线流程</button>
+          </div>
+          <div id="accessResult" class="status">还没有订单结果。</div>
+        </div>
+
+        <div class="panel stack">
+          <h2>4. 托管钱包导出 / 迁移</h2>
+          <p>演示 Google 用户生成托管钱包、可导出流程、迁移到外部钱包；页面不会展示私钥。</p>
+          <div class="row">
+            <button id="walletFlowBtn" type="button">跑钱包导出 + 迁移</button>
+          </div>
+          <div id="walletResult" class="status">还没有钱包迁移结果。</div>
+        </div>
+
+        <div class="panel stack">
+          <h2>5. 退款规则对比</h2>
+          <p>演示安全事件可退款、设计不匹配不可退款，并走人工 review/resolve 状态机。</p>
+          <div class="row">
+            <button id="refundFlowBtn" type="button">跑退款规则对比</button>
+          </div>
+          <div id="refundResult" class="status">还没有退款结果。</div>
+        </div>
+
+        <div class="panel stack">
+          <h2>6. 开发者结算 / 声誉</h2>
+          <p>桥接确认后生成 settlement，并可查看开发者分账、holdback 和本地声誉。</p>
+          <div id="settlementResult" class="status">跑访问权桥接后会显示结算。</div>
+        </div>
+      </section>
+
       <section class="panel stack" style="margin-top: 16px">
-        <h2>3. 调试日志</h2>
+        <h2>7. 调试日志</h2>
         <pre id="log">[]</pre>
       </section>
     </main>
@@ -282,6 +342,10 @@
       const state = {
         user: null,
         creditAccount: null,
+        developer: null,
+        lastOrder: null,
+        lastAccessBridge: null,
+        lastSettlement: null,
         logs: []
       };
 
@@ -292,12 +356,20 @@
         connectBtn: document.querySelector("#connectBtn"),
         recommendBtn: document.querySelector("#recommendBtn"),
         run3Btn: document.querySelector("#run3Btn"),
+        accessFlowBtn: document.querySelector("#accessFlowBtn"),
+        fullFlowBtn: document.querySelector("#fullFlowBtn"),
+        walletFlowBtn: document.querySelector("#walletFlowBtn"),
+        refundFlowBtn: document.querySelector("#refundFlowBtn"),
         status: document.querySelector("#status"),
         userId: document.querySelector("#userId"),
         wallet: document.querySelector("#wallet"),
         balance: document.querySelector("#balance"),
         summary: document.querySelector("#summary"),
         results: document.querySelector("#results"),
+        accessResult: document.querySelector("#accessResult"),
+        walletResult: document.querySelector("#walletResult"),
+        refundResult: document.querySelector("#refundResult"),
+        settlementResult: document.querySelector("#settlementResult"),
         log: document.querySelector("#log")
       };
 
@@ -306,7 +378,16 @@
       }
 
       function setBusy(isBusy) {
-        for (const button of [els.healthBtn, els.connectBtn, els.recommendBtn, els.run3Btn]) {
+        for (const button of [
+          els.healthBtn,
+          els.connectBtn,
+          els.recommendBtn,
+          els.run3Btn,
+          els.accessFlowBtn,
+          els.fullFlowBtn,
+          els.walletFlowBtn,
+          els.refundFlowBtn
+        ]) {
           button.disabled = isBusy;
         }
       }
@@ -451,6 +532,260 @@
         }
       }
 
+      async function ensureDeveloper(agentId = "dify") {
+        if (state.developer) {
+          return state.developer;
+        }
+
+        const runId = Date.now().toString(36);
+        const developerResponse = await fetchJson("/api/developers", {
+          method: "POST",
+          body: {
+            displayName: `Dify Labs Demo ${runId}`,
+            walletAddress: "0x3333333333333333333333333333333333333333",
+            supportContact: "support@example.com",
+            trustStatus: "verified",
+            trustScore: 82
+          }
+        });
+        state.developer = developerResponse.developer;
+        await fetchJson(`/api/developers/${state.developer.developerId}/agents`, {
+          method: "POST",
+          body: { agentId }
+        });
+        log("developer_linked", { developer: state.developer, agentId });
+        return state.developer;
+      }
+
+      async function createPaidOrder(agentId = "dify", amount = "20.00") {
+        await ensureUser();
+        const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        const orderResponse = await fetchJson("/api/orders", {
+          method: "POST",
+          body: {
+            userId: state.user.platformUserId,
+            agentId,
+            amount,
+            currency: "CREDITS"
+          }
+        });
+        const paymentResponse = await fetchJson("/api/payments/mock-callback", {
+          method: "POST",
+          body: {
+            orderId: orderResponse.order.orderId,
+            paymentProvider: "stripe-mock",
+            providerPaymentId: `pay-${runId}`,
+            idempotencyKey: `idem-${runId}`,
+            paidAmount: amount
+          }
+        });
+        return {
+          order: paymentResponse.order,
+          bridge: paymentResponse.bridge,
+          idempotentReplay: paymentResponse.idempotentReplay
+        };
+      }
+
+      async function runAccessFlow() {
+        setBusy(true);
+        els.accessResult.className = "status";
+        els.accessResult.textContent = "正在创建开发者、订单、支付回调并桥接访问权...";
+        try {
+          const developer = await ensureDeveloper("dify");
+          const paid = await createPaidOrder("dify");
+          const submitted = await fetchJson(`/api/access-bridges/${paid.bridge.bridgeId}/submit`, {
+            method: "POST",
+            body: {
+              chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          });
+          const confirmed = await fetchJson(`/api/access-bridges/${paid.bridge.bridgeId}/confirm`, {
+            method: "POST"
+          });
+          const orderState = await fetchJson(`/api/orders/${paid.order.orderId}`);
+          const settlementResponse = await fetchJson(`/api/settlements/orders/${paid.order.orderId}`);
+          const summaryResponse = await fetchJson(`/api/settlements/developers/${developer.developerId}/summary`);
+          const reputationResponse = await fetchJson("/api/reputation/agents/dify");
+
+          state.lastOrder = orderState.order;
+          state.lastAccessBridge = confirmed.accessBridge;
+          state.lastSettlement = settlementResponse.settlement;
+          renderAccessFlow({
+            order: orderState.order,
+            bridge: confirmed.accessBridge,
+            submitted: submitted.accessBridge,
+            settlement: settlementResponse.settlement,
+            summary: summaryResponse.summary,
+            reputation: reputationResponse.reputation
+          });
+          log("access_bridge_flow", {
+            order: orderState.order,
+            bridge: confirmed.accessBridge,
+            settlement: settlementResponse.settlement,
+            summary: summaryResponse.summary,
+            reputation: reputationResponse.reputation
+          });
+        } catch (error) {
+          els.accessResult.className = "status error";
+          els.accessResult.textContent = error.message;
+          log("access_bridge_flow_error", { message: error.message });
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function runWalletFlow() {
+        setBusy(true);
+        els.walletResult.className = "status";
+        els.walletResult.textContent = "正在创建可导出钱包并迁移到外部地址...";
+        try {
+          if (!state.user || state.user.custodyMode !== "backend_custodied_exportable") {
+            await connectUser();
+          }
+          const exportReady = await fetchJson(`/api/web2/users/${state.user.platformUserId}/wallet/export/request`, {
+            method: "POST",
+            body: {
+              freshGoogleAuth: true,
+              secondFactorVerified: true
+            }
+          });
+          const completed = await fetchJson(`/api/web2/users/${state.user.platformUserId}/wallet/export/complete`, {
+            method: "POST"
+          });
+          const targetWalletAddress = buildDemoWalletAddress();
+          const migrated = await fetchJson(`/api/web2/users/${state.user.platformUserId}/wallet/migrate`, {
+            method: "POST",
+            body: {
+              targetWalletAddress,
+              ownershipProofVerified: true
+            }
+          });
+          state.user = migrated.user;
+          refreshUser();
+          renderWalletFlow({
+            exportReady,
+            completed,
+            migrated
+          });
+          log("wallet_export_migration", { exportReady, completed, migrated });
+        } catch (error) {
+          els.walletResult.className = "status error";
+          els.walletResult.textContent = error.message;
+          log("wallet_export_migration_error", { message: error.message });
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function runRefundFlow() {
+        setBusy(true);
+        els.refundResult.className = "status";
+        els.refundResult.textContent = "正在创建两笔订单并对比退款规则...";
+        try {
+          await ensureDeveloper("dify");
+          const securityOrder = await createPaidOrder("dify");
+          const securityRefundCreated = await fetchJson("/api/refunds", {
+            method: "POST",
+            body: {
+              orderId: securityOrder.order.orderId,
+              category: "security_incident"
+            }
+          });
+          await fetchJson(`/api/refunds/${securityRefundCreated.refund.refundId}/review`, {
+            method: "POST",
+            body: { reviewerId: "ops-demo" }
+          });
+          const securityResolved = await fetchJson(`/api/refunds/${securityRefundCreated.refund.refundId}/resolve`, {
+            method: "POST",
+            body: {
+              outcome: "approved",
+              reviewNote: "Confirmed severe security incident in demo.",
+              refundAmount: "20.00"
+            }
+          });
+          const securityOrderState = await fetchJson(`/api/orders/${securityOrder.order.orderId}`);
+          const securitySettlement = await fetchJson(`/api/settlements/orders/${securityOrder.order.orderId}`);
+
+          const designOrder = await createPaidOrder("dify");
+          const designRefundCreated = await fetchJson("/api/refunds", {
+            method: "POST",
+            body: {
+              orderId: designOrder.order.orderId,
+              category: "design_mismatch"
+            }
+          });
+          await fetchJson(`/api/refunds/${designRefundCreated.refund.refundId}/review`, {
+            method: "POST",
+            body: { reviewerId: "ops-demo" }
+          });
+          const designResolved = await fetchJson(`/api/refunds/${designRefundCreated.refund.refundId}/resolve`, {
+            method: "POST",
+            body: {
+              outcome: "rejected",
+              reviewNote: "Agent works as described; request is outside published design.",
+              operatorReviewFinding: "Design mismatch is not treated as a severe platform incident."
+            }
+          });
+          const designOrderState = await fetchJson(`/api/orders/${designOrder.order.orderId}`);
+
+          renderRefundFlow({
+            security: {
+              refund: securityResolved.refund,
+              order: securityOrderState.order,
+              settlement: securitySettlement.settlement
+            },
+            design: {
+              refund: designResolved.refund,
+              order: designOrderState.order
+            }
+          });
+          log("refund_policy_flow", {
+            security: {
+              refund: securityResolved.refund,
+              order: securityOrderState.order,
+              settlement: securitySettlement.settlement
+            },
+            design: {
+              refund: designResolved.refund,
+              order: designOrderState.order
+            }
+          });
+        } catch (error) {
+          els.refundResult.className = "status error";
+          els.refundResult.textContent = error.message;
+          log("refund_policy_flow_error", { message: error.message });
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function runFullFlow() {
+        setBusy(true);
+        setStatus("正在跑完整 C 线流程：health -> user -> LLM -> access -> wallet -> refund...");
+        try {
+          await checkHealth();
+          await connectUser();
+          await runRecommendation();
+          await runAccessFlow();
+          await runWalletFlow();
+          await runRefundFlow();
+          setStatus("完整 C 线流程已跑完。", "ok");
+          log("full_c_line_flow_done", {
+            user: state.user,
+            creditAccount: state.creditAccount,
+            developer: state.developer,
+            lastOrder: state.lastOrder,
+            lastAccessBridge: state.lastAccessBridge,
+            lastSettlement: state.lastSettlement
+          });
+        } catch (error) {
+          setStatus(error.message, "error");
+          log("full_c_line_flow_error", { message: error.message });
+        } finally {
+          setBusy(false);
+        }
+      }
+
       function renderRecommendation(response, elapsedMs) {
         const kind = response.fallbackUsed ? "warn" : "ok";
         const chargedText = response.charged ? `已扣 ${response.costCredits} 积分` : "未扣积分";
@@ -492,6 +827,65 @@
           .join("");
       }
 
+      function renderAccessFlow(data) {
+        els.accessResult.className = "status ok";
+        els.accessResult.innerHTML = `
+          <strong>访问权桥接完成</strong>
+          <div class="kv">
+            <span>order</span><code>${escapeHtml(data.order.orderId)}</code>
+            <span>order status</span><code>${escapeHtml(data.order.status)}</code>
+            <span>bridge</span><code>${escapeHtml(data.bridge.bridgeId)}</code>
+            <span>bridge status</span><code>${escapeHtml(data.bridge.status)}</code>
+            <span>chain tx</span><code>${escapeHtml(data.bridge.chainAccessTxHash || "-")}</code>
+          </div>
+        `;
+        renderSettlement(data);
+      }
+
+      function renderSettlement(data) {
+        els.settlementResult.className = "status ok";
+        els.settlementResult.innerHTML = `
+          <strong>结算与声誉已生成</strong>
+          <div class="kv">
+            <span>settlement</span><code>${escapeHtml(data.settlement.settlementId)}</code>
+            <span>status</span><code>${escapeHtml(data.settlement.status)}</code>
+            <span>platform fee</span><code>${escapeHtml(data.settlement.platformFeeAmount)}</code>
+            <span>developer share</span><code>${escapeHtml(data.settlement.developerShareAmount)}</code>
+            <span>holdback</span><code>${escapeHtml(data.settlement.holdbackAmount)}</code>
+            <span>payable</span><code>${escapeHtml(data.summary.payableAmount)}</code>
+            <span>reputation</span><code>${escapeHtml(data.reputation.source)} · ${escapeHtml(data.reputation.agentId)}</code>
+          </div>
+        `;
+      }
+
+      function renderWalletFlow(data) {
+        els.walletResult.className = "status ok";
+        els.walletResult.innerHTML = `
+          <strong>钱包导出与迁移完成</strong>
+          <div class="kv">
+            <span>export status</span><code>${escapeHtml(data.completed.user.exportStatus)}</code>
+            <span>receipt</span><code>${escapeHtml(data.exportReady.exportReceipt.receiptId)}</code>
+            <span>private key</span><code>${data.exportReady.exportReceipt.privateKeyMaterial === null ? "not returned" : "unexpected"}</code>
+            <span>custody</span><code>${escapeHtml(data.migrated.user.custodyMode)}</code>
+            <span>new wallet</span><code>${escapeHtml(data.migrated.user.walletAddress)}</code>
+          </div>
+        `;
+      }
+
+      function renderRefundFlow(data) {
+        els.refundResult.className = "status ok";
+        els.refundResult.innerHTML = `
+          <strong>退款规则对比完成</strong>
+          <div class="kv">
+            <span>安全事件</span><code>${escapeHtml(data.security.refund.eligibility)} / ${escapeHtml(data.security.refund.status)}</code>
+            <span>安全订单</span><code>${escapeHtml(data.security.order.status)}</code>
+            <span>安全结算</span><code>${escapeHtml(data.security.settlement.status)}</code>
+            <span>设计不匹配</span><code>${escapeHtml(data.design.refund.eligibility)} / ${escapeHtml(data.design.refund.status)}</code>
+            <span>设计订单</span><code>${escapeHtml(data.design.order.status)}</code>
+          </div>
+        `;
+      }
+
       function numberText(value) {
         return typeof value === "number" ? Math.round(value) : "-";
       }
@@ -505,10 +899,19 @@
           .replaceAll("'", "&#039;");
       }
 
+      function buildDemoWalletAddress() {
+        const random = `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+        return `0x${random.padEnd(40, "2").slice(0, 40)}`;
+      }
+
       els.healthBtn.addEventListener("click", checkHealth);
       els.connectBtn.addEventListener("click", connectUser);
       els.recommendBtn.addEventListener("click", runRecommendation);
       els.run3Btn.addEventListener("click", runThreeTimes);
+      els.accessFlowBtn.addEventListener("click", runAccessFlow);
+      els.fullFlowBtn.addEventListener("click", runFullFlow);
+      els.walletFlowBtn.addEventListener("click", runWalletFlow);
+      els.refundFlowBtn.addEventListener("click", runRefundFlow);
 
       checkHealth();
     </script>
