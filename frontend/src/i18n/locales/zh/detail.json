@@ -110,8 +110,9 @@
       "title": "Web3 通道",
       "action": "链上租赁",
       "price": "市场价格：{{price}}",
-      "disabledReason": "钱包签名和链上 grantRentalAccess 尚未接入。",
-      "marketplaceReadOnly": "Marketplace 价格可展示；真实钱包签名和 grantRentalAccess 仍未接入。"
+      "disabledReason": "Web2/法币订单的链上授权仍等待 grantRentalAccess bridge。",
+      "marketplaceReadOnly": "Marketplace 价格可展示；Web2/法币订单的链上授权仍等待 grantRentalAccess bridge。",
+      "nativeDirect": "链上直租请使用下方原生 Web3 面板；Web2/法币订单仍等待 grantRentalAccess bridge。"
     }
   },
   "official": {
@@ -135,6 +136,7 @@
     "latestAudit": "最新审计",
     "auditHistory": "审计历史",
     "recentRentals": "最近租赁记录",
+    "anonymousRental": "匿名租赁记录 #{{index}}",
     "noReputation": "Registry 未返回信誉记录。",
     "marketplaceUnavailable": "当前前端未配置 Marketplace 价格读取。",
     "noAudit": "暂无审计记录。",

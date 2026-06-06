@@ -110,8 +110,9 @@
       "title": "Web3 channel",
       "action": "On-chain rental",
       "price": "Marketplace price: {{price}}",
-      "disabledReason": "Wallet signing and on-chain grantRentalAccess are not connected yet.",
-      "marketplaceReadOnly": "Marketplace pricing can be displayed; real wallet signing and grantRentalAccess are not connected yet."
+      "disabledReason": "On-chain grants for Web2/fiat orders still wait for the grantRentalAccess bridge.",
+      "marketplaceReadOnly": "Marketplace pricing can be displayed; on-chain grants for Web2/fiat orders still wait for the grantRentalAccess bridge.",
+      "nativeDirect": "Use the native Web3 panel below for buyer-wallet rentAgent rentals; Web2/fiat orders still wait for the grantRentalAccess bridge."
     }
   },
   "official": {
@@ -135,6 +136,7 @@
     "latestAudit": "Latest audit",
     "auditHistory": "Audit history",
     "recentRentals": "Recent marketplace rentals",
+    "anonymousRental": "Anonymous rental record #{{index}}",
     "noReputation": "No reputation record returned by the registry.",
     "marketplaceUnavailable": "Marketplace pricing is not configured for this frontend.",
     "noAudit": "No audit record yet.",
