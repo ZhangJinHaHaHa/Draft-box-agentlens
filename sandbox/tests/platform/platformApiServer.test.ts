@@ -275,6 +275,116 @@ test("platform API supports access bridge submit, fail, retry and confirm", asyn
   assert.match(resubmit.body.error as string, /Cannot submit/);
 });
 
+test("platform API accepts one usage review after paid access is confirmed", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const order = await createPaidOrder(store);
+  const orderResponse = await callApi(store, "GET", `/api/orders/${order.orderId}`);
+  const bridge = orderResponse.body.accessBridge as Record<string, unknown>;
+  const prematureReview = await callApi(store, "POST", "/api/reviews", {
+    orderId: order.orderId,
+    userId: order.userId,
+    overallRating: 5
+  });
+
+  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
+    chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  });
+  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/confirm`);
+  const reviewResponse = await callApi(store, "POST", "/api/reviews", {
+    orderId: order.orderId,
+    userId: order.userId,
+    overallRating: 5,
+    dimensionRatings: {
+      security: 2,
+      taskExecution: 2,
+      cognitive: 2,
+      environment: 1,
+      engineering: 2,
+      compliance: 2
+    },
+    capabilityMatched: true,
+    safetyIncidentReported: false,
+    commentText: "Matched the promised RAG workflow in the demo."
+  });
+  const duplicateReview = await callApi(store, "POST", "/api/reviews", {
+    orderId: order.orderId,
+    userId: order.userId,
+    overallRating: 4
+  });
+  const summaryResponse = await callApi(store, "GET", "/api/reviews/agents/dify/summary");
+  const orderReviewResponse = await callApi(store, "GET", `/api/reviews/orders/${order.orderId}`);
+  const reputationResponse = await callApi(store, "GET", "/api/reputation/agents/dify");
+
+  const review = reviewResponse.body.review as Record<string, unknown>;
+  const summary = summaryResponse.body.summary as Record<string, unknown>;
+  const reputation = reputationResponse.body.reputation as Record<string, unknown>;
+  const reputationSignals = reputation.signals as Record<string, unknown>;
+
+  assert.equal(prematureReview.statusCode, 400);
+  assert.match(prematureReview.body.error as string, /confirmed access/);
+  assert.equal(reviewResponse.statusCode, 201);
+  assert.match(review.commentHash as string, /^0x[0-9a-f]{64}$/);
+  assert.equal(summary.reviewCount, 1);
+  assert.equal(summary.averageRating, 5);
+  assert.equal(summary.platformRating, 100);
+  assert.equal((summary.dimensionGoodRatios as Record<string, unknown>).security, 1);
+  assert.equal((orderReviewResponse.body.review as Record<string, unknown>).reviewId, review.reviewId);
+  assert.equal(reputationSignals.reviewCount, 1);
+  assert.equal(reputationSignals.platformRating, 100);
+  assert.equal(duplicateReview.statusCode, 409);
+});
+
+test("platform API recommendation catalog uses local review and reputation signals", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const order = await createPaidOrder(store);
+  const orderResponse = await callApi(store, "GET", `/api/orders/${order.orderId}`);
+  const bridge = orderResponse.body.accessBridge as Record<string, unknown>;
+  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/submit`, {
+    chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  });
+  await callApi(store, "POST", `/api/access-bridges/${bridge.bridgeId}/confirm`);
+  await callApi(store, "POST", "/api/reviews", {
+    orderId: order.orderId,
+    userId: order.userId,
+    overallRating: 5,
+    capabilityMatched: true
+  });
+
+  let capturedDifySignals:
+    | {
+        platformRating?: number;
+        paidOrders?: number;
+        accessBridgeSuccessRate?: number;
+      }
+    | undefined;
+  const response = await callApi(
+    store,
+    "POST",
+    "/api/recommendations/llm",
+    {
+      userId: order.userId,
+      query: "自托管 RAG 知识库 API",
+      limit: 2
+    },
+    {
+      catalog: defaultRecommendationCatalog,
+      costCredits: 3,
+      llmClient: {
+        engine: "mock-llm",
+        async recommend(input) {
+          capturedDifySignals = input.catalog.find((entry) => entry.id === "dify")?.platformSignals;
+          return input.baseline;
+        }
+      }
+    }
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(capturedDifySignals?.platformRating, 100);
+  assert.equal(capturedDifySignals?.paidOrders, 1);
+  assert.equal(capturedDifySignals?.accessBridgeSuccessRate, 1);
+});
+
 test("platform API exposes wallet export and migration flows without private key material", async () => {
   const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
   const user = await createGoogleUser(store);

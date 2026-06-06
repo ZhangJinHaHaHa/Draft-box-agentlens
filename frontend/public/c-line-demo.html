@@ -259,7 +259,7 @@
       <div class="hero">
         <div>
           <h1>AgentLens C 线最小验证页</h1>
-          <p>只验证 Platform API、Google mock 钱包、积分、付费 LLM 推荐和 fallback。</p>
+          <p>验证 Platform API、Google mock 钱包、积分、付费 LLM 推荐、订单桥接、使用后评分和退款结算。</p>
         </div>
         <div class="pill">静态页，不依赖 React env</div>
       </div>
@@ -308,7 +308,16 @@
         </div>
 
         <div class="panel stack">
-          <h2>4. 托管钱包导出 / 迁移</h2>
+          <h2>4. 使用后评分 / 推荐回灌</h2>
+          <p>演示订单获得访问权后提交一次使用评分，并把评分聚合进平台声誉和下一次推荐信号。</p>
+          <div class="row">
+            <button id="reviewFlowBtn" type="button">跑使用后评分</button>
+          </div>
+          <div id="reviewResult" class="status">还没有评分结果。</div>
+        </div>
+
+        <div class="panel stack">
+          <h2>5. 托管钱包导出 / 迁移</h2>
           <p>演示 Google 用户生成托管钱包、可导出流程、迁移到外部钱包；页面不会展示私钥。</p>
           <div class="row">
             <button id="walletFlowBtn" type="button">跑钱包导出 + 迁移</button>
@@ -317,7 +326,7 @@
         </div>
 
         <div class="panel stack">
-          <h2>5. 退款规则对比</h2>
+          <h2>6. 退款规则对比</h2>
           <p>演示安全事件可退款、设计不匹配不可退款，并走人工 review/resolve 状态机。</p>
           <div class="row">
             <button id="refundFlowBtn" type="button">跑退款规则对比</button>
@@ -326,14 +335,14 @@
         </div>
 
         <div class="panel stack">
-          <h2>6. 开发者结算 / 声誉</h2>
+          <h2>7. 开发者结算 / 声誉</h2>
           <p>桥接确认后生成 settlement，并可查看开发者分账、holdback 和本地声誉。</p>
           <div id="settlementResult" class="status">跑访问权桥接后会显示结算。</div>
         </div>
       </section>
 
       <section class="panel stack" style="margin-top: 16px">
-        <h2>7. 调试日志</h2>
+        <h2>8. 调试日志</h2>
         <pre id="log">[]</pre>
       </section>
     </main>
@@ -346,6 +355,8 @@
         lastOrder: null,
         lastAccessBridge: null,
         lastSettlement: null,
+        lastSettlementSummary: null,
+        lastReview: null,
         logs: []
       };
 
@@ -358,6 +369,7 @@
         run3Btn: document.querySelector("#run3Btn"),
         accessFlowBtn: document.querySelector("#accessFlowBtn"),
         fullFlowBtn: document.querySelector("#fullFlowBtn"),
+        reviewFlowBtn: document.querySelector("#reviewFlowBtn"),
         walletFlowBtn: document.querySelector("#walletFlowBtn"),
         refundFlowBtn: document.querySelector("#refundFlowBtn"),
         status: document.querySelector("#status"),
@@ -367,6 +379,7 @@
         summary: document.querySelector("#summary"),
         results: document.querySelector("#results"),
         accessResult: document.querySelector("#accessResult"),
+        reviewResult: document.querySelector("#reviewResult"),
         walletResult: document.querySelector("#walletResult"),
         refundResult: document.querySelector("#refundResult"),
         settlementResult: document.querySelector("#settlementResult"),
@@ -385,6 +398,7 @@
           els.run3Btn,
           els.accessFlowBtn,
           els.fullFlowBtn,
+          els.reviewFlowBtn,
           els.walletFlowBtn,
           els.refundFlowBtn
         ]) {
@@ -586,49 +600,119 @@
         };
       }
 
+      async function createConfirmedAccessOrder(agentId = "dify") {
+        const developer = await ensureDeveloper(agentId);
+        const paid = await createPaidOrder(agentId);
+        const submitted = await fetchJson(`/api/access-bridges/${paid.bridge.bridgeId}/submit`, {
+          method: "POST",
+          body: {
+            chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        });
+        const confirmed = await fetchJson(`/api/access-bridges/${paid.bridge.bridgeId}/confirm`, {
+          method: "POST"
+        });
+        const orderState = await fetchJson(`/api/orders/${paid.order.orderId}`);
+        const settlementResponse = await fetchJson(`/api/settlements/orders/${paid.order.orderId}`);
+        const summaryResponse = await fetchJson(`/api/settlements/developers/${developer.developerId}/summary`);
+        const reputationResponse = await fetchJson(`/api/reputation/agents/${agentId}`);
+
+        const data = {
+          order: orderState.order,
+          bridge: confirmed.accessBridge,
+          submitted: submitted.accessBridge,
+          settlement: settlementResponse.settlement,
+          summary: summaryResponse.summary,
+          reputation: reputationResponse.reputation
+        };
+        state.lastOrder = data.order;
+        state.lastAccessBridge = data.bridge;
+        state.lastSettlement = data.settlement;
+        state.lastSettlementSummary = data.summary;
+        return data;
+      }
+
       async function runAccessFlow() {
         setBusy(true);
         els.accessResult.className = "status";
         els.accessResult.textContent = "正在创建开发者、订单、支付回调并桥接访问权...";
         try {
-          const developer = await ensureDeveloper("dify");
-          const paid = await createPaidOrder("dify");
-          const submitted = await fetchJson(`/api/access-bridges/${paid.bridge.bridgeId}/submit`, {
-            method: "POST",
-            body: {
-              chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            }
-          });
-          const confirmed = await fetchJson(`/api/access-bridges/${paid.bridge.bridgeId}/confirm`, {
-            method: "POST"
-          });
-          const orderState = await fetchJson(`/api/orders/${paid.order.orderId}`);
-          const settlementResponse = await fetchJson(`/api/settlements/orders/${paid.order.orderId}`);
-          const summaryResponse = await fetchJson(`/api/settlements/developers/${developer.developerId}/summary`);
-          const reputationResponse = await fetchJson("/api/reputation/agents/dify");
-
-          state.lastOrder = orderState.order;
-          state.lastAccessBridge = confirmed.accessBridge;
-          state.lastSettlement = settlementResponse.settlement;
-          renderAccessFlow({
-            order: orderState.order,
-            bridge: confirmed.accessBridge,
-            submitted: submitted.accessBridge,
-            settlement: settlementResponse.settlement,
-            summary: summaryResponse.summary,
-            reputation: reputationResponse.reputation
-          });
-          log("access_bridge_flow", {
-            order: orderState.order,
-            bridge: confirmed.accessBridge,
-            settlement: settlementResponse.settlement,
-            summary: summaryResponse.summary,
-            reputation: reputationResponse.reputation
-          });
+          const data = await createConfirmedAccessOrder("dify");
+          renderAccessFlow(data);
+          log("access_bridge_flow", data);
         } catch (error) {
           els.accessResult.className = "status error";
           els.accessResult.textContent = error.message;
           log("access_bridge_flow_error", { message: error.message });
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function runReviewFlow() {
+        setBusy(true);
+        els.reviewResult.className = "status";
+        els.reviewResult.textContent = "正在确认访问权并提交使用后评分...";
+        try {
+          let accessData = null;
+          const hasReusableOrder =
+            state.lastOrder &&
+            state.lastAccessBridge?.status === "confirmed" &&
+            state.lastReview?.orderId !== state.lastOrder.orderId;
+          if (hasReusableOrder) {
+            accessData = {
+              order: state.lastOrder,
+              bridge: state.lastAccessBridge,
+              settlement: state.lastSettlement,
+              summary: state.lastSettlementSummary
+            };
+          } else {
+            accessData = await createConfirmedAccessOrder("dify");
+            renderAccessFlow(accessData);
+          }
+
+          const reviewResponse = await fetchJson("/api/reviews", {
+            method: "POST",
+            body: {
+              orderId: accessData.order.orderId,
+              userId: accessData.order.userId,
+              overallRating: 5,
+              dimensionRatings: {
+                security: 2,
+                taskExecution: 2,
+                cognitive: 2,
+                environment: 1,
+                engineering: 2,
+                compliance: 2
+              },
+              capabilityMatched: true,
+              safetyIncidentReported: false,
+              commentText: "Demo user confirms Dify matched the self-hosted RAG workflow and API integration promise."
+            }
+          });
+          const summaryResponse = await fetchJson("/api/reviews/agents/dify/summary");
+          const reputationResponse = await fetchJson("/api/reputation/agents/dify");
+
+          state.lastReview = reviewResponse.review;
+          renderReviewFlow({
+            review: reviewResponse.review,
+            summary: summaryResponse.summary,
+            reputation: reputationResponse.reputation
+          });
+          renderSettlement({
+            settlement: accessData.settlement || state.lastSettlement,
+            summary: accessData.summary || state.lastSettlementSummary || { payableAmount: "-" },
+            reputation: reputationResponse.reputation
+          });
+          log("usage_review_flow", {
+            review: reviewResponse.review,
+            summary: summaryResponse.summary,
+            reputation: reputationResponse.reputation
+          });
+        } catch (error) {
+          els.reviewResult.className = "status error";
+          els.reviewResult.textContent = error.message;
+          log("usage_review_flow_error", { message: error.message });
         } finally {
           setBusy(false);
         }
@@ -761,12 +845,13 @@
 
       async function runFullFlow() {
         setBusy(true);
-        setStatus("正在跑完整 C 线流程：health -> user -> LLM -> access -> wallet -> refund...");
+        setStatus("正在跑完整 C 线流程：health -> user -> LLM -> access -> review -> wallet -> refund...");
         try {
           await checkHealth();
           await connectUser();
           await runRecommendation();
           await runAccessFlow();
+          await runReviewFlow();
           await runWalletFlow();
           await runRefundFlow();
           setStatus("完整 C 线流程已跑完。", "ok");
@@ -776,7 +861,9 @@
             developer: state.developer,
             lastOrder: state.lastOrder,
             lastAccessBridge: state.lastAccessBridge,
-            lastSettlement: state.lastSettlement
+            lastSettlement: state.lastSettlement,
+            lastSettlementSummary: state.lastSettlementSummary,
+            lastReview: state.lastReview
           });
         } catch (error) {
           setStatus(error.message, "error");
@@ -843,6 +930,7 @@
       }
 
       function renderSettlement(data) {
+        const subjectId = data.reputation.subjectId || data.reputation.agentId || "-";
         els.settlementResult.className = "status ok";
         els.settlementResult.innerHTML = `
           <strong>结算与声誉已生成</strong>
@@ -853,7 +941,26 @@
             <span>developer share</span><code>${escapeHtml(data.settlement.developerShareAmount)}</code>
             <span>holdback</span><code>${escapeHtml(data.settlement.holdbackAmount)}</code>
             <span>payable</span><code>${escapeHtml(data.summary.payableAmount)}</code>
-            <span>reputation</span><code>${escapeHtml(data.reputation.source)} · ${escapeHtml(data.reputation.agentId)}</code>
+            <span>reputation</span><code>${escapeHtml(data.reputation.source)} · ${escapeHtml(subjectId)} · score ${escapeHtml(data.reputation.score)}</code>
+          </div>
+        `;
+      }
+
+      function renderReviewFlow(data) {
+        const ratios = data.summary.dimensionGoodRatios || {};
+        els.reviewResult.className = "status ok";
+        els.reviewResult.innerHTML = `
+          <strong>使用后评分已提交</strong>
+          <div class="kv">
+            <span>review</span><code>${escapeHtml(data.review.reviewId)}</code>
+            <span>order</span><code>${escapeHtml(data.review.orderId)}</code>
+            <span>overall</span><code>${escapeHtml(data.review.overallRating)} / 5</code>
+            <span>comment hash</span><code>${escapeHtml(data.review.commentHash)}</code>
+            <span>review count</span><code>${escapeHtml(data.summary.reviewCount)}</code>
+            <span>platform rating</span><code>${escapeHtml(data.summary.platformRating)}</code>
+            <span>security good</span><code>${escapeHtml(ratios.security ?? 0)}</code>
+            <span>task good</span><code>${escapeHtml(ratios.taskExecution ?? 0)}</code>
+            <span>reputation score</span><code>${escapeHtml(data.reputation.score)}</code>
           </div>
         `;
       }
@@ -910,6 +1017,7 @@
       els.run3Btn.addEventListener("click", runThreeTimes);
       els.accessFlowBtn.addEventListener("click", runAccessFlow);
       els.fullFlowBtn.addEventListener("click", runFullFlow);
+      els.reviewFlowBtn.addEventListener("click", runReviewFlow);
       els.walletFlowBtn.addEventListener("click", runWalletFlow);
       els.refundFlowBtn.addEventListener("click", runRefundFlow);
 

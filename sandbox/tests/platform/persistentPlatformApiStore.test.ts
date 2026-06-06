@@ -102,3 +102,57 @@ test("createPersistentPlatformApiStore reloads developer, bridge and settlement 
     await rm(stateDir, { recursive: true, force: true });
   }
 });
+
+test("createPersistentPlatformApiStore reloads usage reviews", async () => {
+  const stateDir = await mkdtemp(`${tmpdir()}${sep}platform-api-store-`);
+
+  try {
+    const firstStore = createPersistentPlatformApiStore({
+      stateDir,
+      now: () => "2026-06-05T00:00:00.000Z"
+    });
+    const user = firstStore.createGoogleMockUser({
+      googleSubject: "google-sub-1",
+      email: "user@example.com"
+    });
+    const order = firstStore.createOrder({
+      userId: user.platformUserId,
+      agentId: "dify",
+      amount: "20.00",
+      currency: "CREDITS"
+    });
+    const paid = firstStore.applyMockPaymentCallback({
+      orderId: order.orderId,
+      paymentProvider: "stripe-mock",
+      providerPaymentId: "pay-1",
+      idempotencyKey: "idem-1",
+      paidAmount: "20.00"
+    });
+    firstStore.submitAccessBridge(paid.bridge.bridgeId, {
+      chainAccessTxHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    });
+    firstStore.confirmAccessBridge(paid.bridge.bridgeId);
+    const review = firstStore.submitUsageReview({
+      orderId: order.orderId,
+      userId: user.platformUserId,
+      overallRating: 5,
+      capabilityMatched: true,
+      commentText: "Works as promised."
+    });
+
+    const reloadedStore = createPersistentPlatformApiStore({
+      stateDir,
+      now: () => "2026-06-05T00:01:00.000Z"
+    });
+    const reloadedReview = reloadedStore.getUsageReviewForOrder(order.orderId);
+    const summary = reloadedStore.getAgentUsageReviewSummary("dify");
+    const inspect = reloadedStore.inspect();
+
+    assert.equal(reloadedReview?.reviewId, review.reviewId);
+    assert.equal(summary.reviewCount, 1);
+    assert.equal(summary.platformRating, 100);
+    assert.equal(inspect.snapshot.usageReviews, 1);
+  } finally {
+    await rm(stateDir, { recursive: true, force: true });
+  }
+});

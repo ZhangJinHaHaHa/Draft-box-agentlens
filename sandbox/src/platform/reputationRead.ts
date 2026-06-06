@@ -2,6 +2,10 @@ import type { AccessBridgeRequest } from "./accessBridge";
 import type { DeveloperProfile } from "./developerProfile";
 import type { PlatformOrder } from "./orderState";
 import type { RefundCase } from "./refundPolicy";
+import {
+  summarizeUsageReviews,
+  type UsageReviewRecord
+} from "./usageReview";
 
 export interface ReputationSnapshot {
   subjectType: "agent" | "developer";
@@ -15,6 +19,11 @@ export interface ReputationSnapshot {
     confirmedAccessBridges: number;
     refunds: number;
     severeRefunds: number;
+    reviewCount?: number;
+    averageRating?: number | null;
+    platformRating?: number | null;
+    capabilityMismatchReports?: number;
+    safetyIncidentReports?: number;
     developerTrustScore?: number;
   };
 }
@@ -25,6 +34,7 @@ export function buildAgentReputationSnapshot(
     orders: readonly PlatformOrder[];
     bridges: readonly AccessBridgeRequest[];
     refunds: readonly RefundCase[];
+    reviews?: readonly UsageReviewRecord[];
     developer?: DeveloperProfile;
   },
   at: string
@@ -39,7 +49,13 @@ export function buildAgentReputationSnapshot(
       refund.agentId === agentId &&
       (refund.category === "security_incident" || refund.category === "access_delivery_failure")
   ).length;
-  const baseScore = 60 + confirmedAccessBridges * 5 + paidOrders * 2 - refunds * 8 - severeRefunds * 12;
+  const reviewSummary = summarizeUsageReviews(agentId, input.reviews ?? []);
+  const reviewBoost =
+    reviewSummary.platformRating === null ? 0 : Math.round((reviewSummary.platformRating - 60) / 5);
+  const reviewPenalty =
+    reviewSummary.capabilityMismatchReports * 4 + reviewSummary.safetyIncidentReports * 10;
+  const baseScore =
+    60 + confirmedAccessBridges * 5 + paidOrders * 2 - refunds * 8 - severeRefunds * 12 + reviewBoost - reviewPenalty;
   const developerBoost = input.developer ? Math.round((input.developer.trustScore - 50) / 5) : 0;
   const score = clampScore(baseScore + developerBoost);
 
@@ -55,6 +71,11 @@ export function buildAgentReputationSnapshot(
       confirmedAccessBridges,
       refunds,
       severeRefunds,
+      reviewCount: reviewSummary.reviewCount,
+      averageRating: reviewSummary.averageRating,
+      platformRating: reviewSummary.platformRating,
+      capabilityMismatchReports: reviewSummary.capabilityMismatchReports,
+      safetyIncidentReports: reviewSummary.safetyIncidentReports,
       developerTrustScore: input.developer?.trustScore
     }
   };
@@ -67,6 +88,7 @@ export function buildDeveloperReputationSnapshot(
     orders: readonly PlatformOrder[];
     bridges: readonly AccessBridgeRequest[];
     refunds: readonly RefundCase[];
+    reviews?: readonly UsageReviewRecord[];
   },
   at: string
 ): ReputationSnapshot {
@@ -81,7 +103,20 @@ export function buildDeveloperReputationSnapshot(
       linkedAgents.has(refund.agentId) &&
       (refund.category === "security_incident" || refund.category === "access_delivery_failure")
   ).length;
-  const score = clampScore(developer.trustScore + confirmedAccessBridges * 3 + paidOrders - refunds * 6 - severeRefunds * 10);
+  const reviews = (input.reviews ?? []).filter((review) => linkedAgents.has(review.agentId));
+  const reviewCount = reviews.length;
+  const averageRating =
+    reviewCount === 0
+      ? null
+      : Math.round((reviews.reduce((sum, review) => sum + review.overallRating, 0) / reviewCount) * 100) / 100;
+  const platformRating = averageRating === null ? null : Math.round(averageRating * 20);
+  const capabilityMismatchReports = reviews.filter((review) => review.capabilityMatched === false).length;
+  const safetyIncidentReports = reviews.filter((review) => review.safetyIncidentReported === true).length;
+  const reviewBoost = platformRating === null ? 0 : Math.round((platformRating - 60) / 6);
+  const reviewPenalty = capabilityMismatchReports * 3 + safetyIncidentReports * 8;
+  const score = clampScore(
+    developer.trustScore + confirmedAccessBridges * 3 + paidOrders - refunds * 6 - severeRefunds * 10 + reviewBoost - reviewPenalty
+  );
 
   return {
     subjectType: "developer",
@@ -95,6 +130,11 @@ export function buildDeveloperReputationSnapshot(
       confirmedAccessBridges,
       refunds,
       severeRefunds,
+      reviewCount,
+      averageRating,
+      platformRating,
+      capabilityMismatchReports,
+      safetyIncidentReports,
       developerTrustScore: developer.trustScore
     }
   };

@@ -42,6 +42,7 @@ import {
 import {
   createSettlementLedgerEntry,
   freezeSettlementEntry,
+  isAccessBridgeConfirmed,
   releaseSettlementEntry,
   resolveSettlementAfterRefund,
   summarizeDeveloperSettlements,
@@ -57,6 +58,15 @@ import {
   type GoogleIdentityProfile,
   type Web2UserWallet
 } from "./web2Wallet";
+import {
+  createUsageReviewRecord,
+  inferDimensionRatingsFromOverall,
+  summarizeUsageReviews,
+  USAGE_REVIEW_DIMENSIONS,
+  type UsageReviewDimensionRatings,
+  type UsageReviewRecord,
+  type UsageReviewSummary
+} from "./usageReview";
 
 export interface CreateGoogleMockUserInput {
   googleSubject: string;
@@ -75,6 +85,17 @@ export interface CreateRefundInput {
   orderId: string;
   category: RefundIssueCategory;
   evidence?: RefundEvidence;
+}
+
+export interface SubmitUsageReviewInput {
+  orderId: string;
+  userId: string;
+  overallRating: number;
+  dimensionRatings?: UsageReviewDimensionRatings;
+  capabilityMatched?: boolean;
+  safetyIncidentReported?: boolean;
+  commentText?: string;
+  evidenceUrl?: string;
 }
 
 export interface MockPaymentCallbackInput {
@@ -101,6 +122,7 @@ export interface PlatformApiStoreSnapshot {
   orders: number;
   accessBridges: number;
   refunds: number;
+  usageReviews: number;
   paymentCallbacks: number;
   developerProfiles: number;
   settlements: number;
@@ -115,6 +137,8 @@ export interface PlatformApiStoreState {
   bridges: AccessBridgeRequest[];
   bridgeIdsByOrderId: Array<[string, string]>;
   refunds: RefundCase[];
+  usageReviews?: UsageReviewRecord[];
+  usageReviewIdsByOrderId?: Array<[string, string]>;
   paymentCallbacks?: PlatformPaymentCallbackRecord[];
   developerProfiles?: DeveloperProfile[];
   agentDeveloperLinks?: AgentDeveloperLink[];
@@ -125,6 +149,7 @@ export interface PlatformApiStoreState {
     orderSeq: number;
     bridgeSeq: number;
     refundSeq: number;
+    reviewSeq?: number;
     developerSeq?: number;
     settlementSeq?: number;
   };
@@ -147,6 +172,7 @@ export interface PlatformAdminInspectSnapshot {
   orders: PlatformOrder[];
   accessBridges: AccessBridgeRequest[];
   refunds: RefundCase[];
+  usageReviews: UsageReviewRecord[];
   paymentCallbacks: PlatformPaymentCallbackRecord[];
   developerProfiles: DeveloperProfile[];
   agentDeveloperLinks: AgentDeveloperLink[];
@@ -175,6 +201,8 @@ export class InMemoryPlatformApiStore {
   private bridges = new Map<string, AccessBridgeRequest>();
   private bridgeIdsByOrderId = new Map<string, string>();
   private refunds = new Map<string, RefundCase>();
+  private usageReviews = new Map<string, UsageReviewRecord>();
+  private usageReviewIdsByOrderId = new Map<string, string>();
   private paymentCallbacks = new Map<string, PlatformPaymentCallbackRecord>();
   private developerProfiles = new Map<string, DeveloperProfile>();
   private agentDeveloperLinks = new Map<string, AgentDeveloperLink>();
@@ -184,6 +212,7 @@ export class InMemoryPlatformApiStore {
   private orderSeq = 0;
   private bridgeSeq = 0;
   private refundSeq = 0;
+  private reviewSeq = 0;
   private developerSeq = 0;
   private settlementSeq = 0;
 
@@ -205,6 +234,7 @@ export class InMemoryPlatformApiStore {
       orders: this.orders.size,
       accessBridges: this.bridges.size,
       refunds: this.refunds.size,
+      usageReviews: this.usageReviews.size,
       paymentCallbacks: this.paymentCallbacks.size,
       developerProfiles: this.developerProfiles.size,
       settlements: this.settlements.size
@@ -221,6 +251,8 @@ export class InMemoryPlatformApiStore {
       bridges: [...this.bridges.values()],
       bridgeIdsByOrderId: [...this.bridgeIdsByOrderId.entries()],
       refunds: [...this.refunds.values()],
+      usageReviews: [...this.usageReviews.values()],
+      usageReviewIdsByOrderId: [...this.usageReviewIdsByOrderId.entries()],
       paymentCallbacks: [...this.paymentCallbacks.values()],
       developerProfiles: [...this.developerProfiles.values()],
       agentDeveloperLinks: [...this.agentDeveloperLinks.values()],
@@ -231,6 +263,7 @@ export class InMemoryPlatformApiStore {
         orderSeq: this.orderSeq,
         bridgeSeq: this.bridgeSeq,
         refundSeq: this.refundSeq,
+        reviewSeq: this.reviewSeq,
         developerSeq: this.developerSeq,
         settlementSeq: this.settlementSeq
       }
@@ -246,6 +279,7 @@ export class InMemoryPlatformApiStore {
       orders: [...this.orders.values()],
       accessBridges: [...this.bridges.values()],
       refunds: [...this.refunds.values()],
+      usageReviews: [...this.usageReviews.values()],
       paymentCallbacks: [...this.paymentCallbacks.values()],
       developerProfiles: [...this.developerProfiles.values()],
       agentDeveloperLinks: [...this.agentDeveloperLinks.values()],
@@ -601,6 +635,63 @@ export class InMemoryPlatformApiStore {
     return refund;
   }
 
+  submitUsageReview(input: SubmitUsageReviewInput): UsageReviewRecord {
+    const order = this.getOrder(input.orderId);
+    const user = this.getUser(input.userId);
+    if (order.userId !== user.platformUserId) {
+      throw new PlatformApiError(403, `User "${user.platformUserId}" cannot review order "${order.orderId}".`);
+    }
+    if (order.status !== "paid") {
+      throw new PlatformApiError(400, `Order "${order.orderId}" must be paid before usage review.`);
+    }
+    const bridge = this.getAccessBridgeForOrder(order.orderId);
+    if (!isAccessBridgeConfirmed(bridge)) {
+      throw new PlatformApiError(400, `Order "${order.orderId}" must have confirmed access before usage review.`);
+    }
+    if (this.usageReviewIdsByOrderId.has(order.orderId)) {
+      throw new PlatformApiError(409, `Order "${order.orderId}" has already been reviewed.`);
+    }
+
+    const overallRating = normalizeOverallRating(input.overallRating);
+    const review = createUsageReviewRecord(
+      {
+        reviewId: `usage-review-${++this.reviewSeq}`,
+        orderId: order.orderId,
+        userId: user.platformUserId,
+        agentId: order.agentId,
+        overallRating,
+        dimensionRatings: normalizeDimensionRatings(input.dimensionRatings, overallRating),
+        capabilityMatched: input.capabilityMatched,
+        safetyIncidentReported: input.safetyIncidentReported,
+        commentText: normalizeOptionalText(input.commentText),
+        evidenceUrl: normalizeOptionalText(input.evidenceUrl)
+      },
+      this.now()
+    );
+
+    this.usageReviews.set(review.reviewId, review);
+    this.usageReviewIdsByOrderId.set(order.orderId, review.reviewId);
+    this.persist();
+    return review;
+  }
+
+  getUsageReview(reviewId: string): UsageReviewRecord {
+    const review = this.usageReviews.get(reviewId);
+    if (!review) {
+      throw new PlatformApiError(404, `Usage review "${reviewId}" was not found.`);
+    }
+    return review;
+  }
+
+  getUsageReviewForOrder(orderId: string): UsageReviewRecord | null {
+    const reviewId = this.usageReviewIdsByOrderId.get(orderId);
+    return reviewId ? this.getUsageReview(reviewId) : null;
+  }
+
+  getAgentUsageReviewSummary(agentId: string): UsageReviewSummary {
+    return summarizeUsageReviews(agentId, [...this.usageReviews.values()]);
+  }
+
   createDeveloperProfile(input: CreateDeveloperProfileInput): DeveloperProfile {
     const developerId = `developer-${++this.developerSeq}`;
     const developer = createDeveloperProfile({ ...input, developerId }, this.now());
@@ -675,6 +766,7 @@ export class InMemoryPlatformApiStore {
         orders: [...this.orders.values()],
         bridges: [...this.bridges.values()],
         refunds: [...this.refunds.values()],
+        reviews: [...this.usageReviews.values()],
         developer: developer ? this.developerProfiles.get(developer) : undefined
       },
       this.now()
@@ -692,7 +784,8 @@ export class InMemoryPlatformApiStore {
         linkedAgentIds,
         orders: [...this.orders.values()],
         bridges: [...this.bridges.values()],
-        refunds: [...this.refunds.values()]
+        refunds: [...this.refunds.values()],
+        reviews: [...this.usageReviews.values()]
       },
       this.now()
     );
@@ -712,6 +805,10 @@ export class InMemoryPlatformApiStore {
     this.bridges = new Map(state.bridges.map((bridge) => [bridge.bridgeId, bridge]));
     this.bridgeIdsByOrderId = new Map(state.bridgeIdsByOrderId);
     this.refunds = new Map(state.refunds.map((refund) => [refund.refundId, refund]));
+    this.usageReviews = new Map(
+      (state.usageReviews ?? []).map((review) => [review.reviewId, review])
+    );
+    this.usageReviewIdsByOrderId = new Map(state.usageReviewIdsByOrderId ?? []);
     this.paymentCallbacks = new Map(
       (state.paymentCallbacks ?? []).map((callback) => [callback.idempotencyKey, callback])
     );
@@ -729,6 +826,7 @@ export class InMemoryPlatformApiStore {
     this.orderSeq = state.sequences.orderSeq;
     this.bridgeSeq = state.sequences.bridgeSeq;
     this.refundSeq = state.sequences.refundSeq;
+    this.reviewSeq = state.sequences.reviewSeq ?? this.usageReviews.size;
     this.developerSeq = state.sequences.developerSeq ?? 0;
     this.settlementSeq = state.sequences.settlementSeq ?? 0;
   }
@@ -790,6 +888,38 @@ function normalizeAmount(value: string | number): string {
     throw new PlatformApiError(400, "amount must be a positive decimal.");
   }
   return amount;
+}
+
+function normalizeOverallRating(value: number): number {
+  if (!Number.isInteger(value) || value < 1 || value > 5) {
+    throw new PlatformApiError(400, "overallRating must be an integer from 1 to 5.");
+  }
+  return value;
+}
+
+function normalizeDimensionRatings(
+  ratings: UsageReviewDimensionRatings | undefined,
+  overallRating: number
+): UsageReviewDimensionRatings {
+  if (!ratings) {
+    return inferDimensionRatingsFromOverall(overallRating);
+  }
+
+  const normalized: Partial<UsageReviewDimensionRatings> = {};
+  for (const dimension of USAGE_REVIEW_DIMENSIONS) {
+    const value = ratings[dimension];
+    if (value !== 0 && value !== 1 && value !== 2) {
+      throw new PlatformApiError(400, `dimensionRatings.${dimension} must be 0, 1, or 2.`);
+    }
+    normalized[dimension] = value;
+  }
+  return normalized as UsageReviewDimensionRatings;
+}
+
+function normalizeOptionalText(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const normalized = value.trim();
+  return normalized.length === 0 ? undefined : normalized;
 }
 
 function assertPaymentCallbackReplayMatches(

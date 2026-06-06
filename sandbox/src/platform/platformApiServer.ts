@@ -10,6 +10,7 @@ import { parseRecommendationRequest } from "../recommendation/recommendationApiS
 import { recommendFromCatalog } from "../recommendation/recommendationService";
 import type {
   RecommendationCatalogEntry,
+  RecommendationPlatformSignals,
   RecommendationResponse
 } from "../recommendation/recommendationTypes";
 import type { DeveloperTrustStatus } from "./developerProfile";
@@ -22,6 +23,10 @@ import {
 import { createPersistentPlatformApiStore } from "./persistentPlatformApiStore";
 import type { PlatformApiConfig } from "./readPlatformApiConfig";
 import type { RefundIssueCategory } from "./refundPolicy";
+import {
+  USAGE_REVIEW_DIMENSIONS,
+  type UsageReviewDimensionRatings
+} from "./usageReview";
 
 interface PlatformRequestLike extends AsyncIterable<Buffer | string> {
   method?: string;
@@ -338,6 +343,54 @@ export async function handlePlatformApiRequest(
       return;
     }
 
+    if (request.method === "POST" && url.pathname === "/api/reviews") {
+      const payload = await readJsonObject(request);
+      const review = store.submitUsageReview({
+        orderId: readRequiredString(payload, "orderId"),
+        userId: readRequiredString(payload, "userId"),
+        overallRating: readOverallRating(payload, "overallRating"),
+        dimensionRatings: readOptionalUsageReviewDimensionRatings(payload, "dimensionRatings"),
+        capabilityMatched: readOptionalBoolean(payload, "capabilityMatched"),
+        safetyIncidentReported: readOptionalBoolean(payload, "safetyIncidentReported"),
+        commentText: readOptionalString(payload, "commentText"),
+        evidenceUrl: readOptionalString(payload, "evidenceUrl")
+      });
+      writeJson(response, 201, {
+        review,
+        summary: store.getAgentUsageReviewSummary(review.agentId),
+        reputation: store.getAgentReputation(review.agentId)
+      });
+      return;
+    }
+
+    if (request.method === "GET" && parts.length === 3 && parts[0] === "api" && parts[1] === "reviews") {
+      writeJson(response, 200, { review: store.getUsageReview(parts[2]) });
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      parts.length === 4 &&
+      parts[0] === "api" &&
+      parts[1] === "reviews" &&
+      parts[2] === "orders"
+    ) {
+      writeJson(response, 200, { review: store.getUsageReviewForOrder(parts[3]) });
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      parts.length === 5 &&
+      parts[0] === "api" &&
+      parts[1] === "reviews" &&
+      parts[2] === "agents" &&
+      parts[4] === "summary"
+    ) {
+      writeJson(response, 200, { summary: store.getAgentUsageReviewSummary(parts[3]) });
+      return;
+    }
+
     if (request.method === "GET" && parts.length === 3 && parts[0] === "api" && parts[1] === "refunds") {
       writeJson(response, 200, { refund: store.getRefund(parts[2]) });
       return;
@@ -502,11 +555,12 @@ async function createChargedLlmRecommendation(
 }> {
   store.assertCreditsAvailable(userId, dependencies.costCredits);
   const recommendationRequest = parseRecommendationRequest(payload);
-  const baseline = recommendFromCatalog(dependencies.catalog, recommendationRequest);
+  const catalog = enrichRecommendationCatalogWithPlatformSignals(dependencies.catalog, store);
+  const baseline = recommendFromCatalog(catalog, recommendationRequest);
 
   try {
     const recommendation = await dependencies.llmClient.recommend({
-      catalog: dependencies.catalog,
+      catalog,
       request: recommendationRequest,
       baseline
     });
@@ -535,6 +589,46 @@ async function createChargedLlmRecommendation(
       recommendation: baseline
     };
   }
+}
+
+function enrichRecommendationCatalogWithPlatformSignals(
+  catalog: readonly RecommendationCatalogEntry[],
+  store: InMemoryPlatformApiStore
+): RecommendationCatalogEntry[] {
+  return catalog.map((entry) => {
+    const reputation = store.getAgentReputation(entry.id);
+    const reviewSummary = store.getAgentUsageReviewSummary(entry.id);
+    const paidOrders = reputation.signals.paidOrders;
+    const hasLocalSignals =
+      paidOrders > 0 ||
+      reputation.signals.confirmedAccessBridges > 0 ||
+      reputation.signals.refunds > 0 ||
+      reviewSummary.reviewCount > 0 ||
+      reputation.signals.developerTrustScore !== undefined;
+    if (!hasLocalSignals) {
+      return entry;
+    }
+
+    const dynamicSignals: RecommendationPlatformSignals = {
+      ...(reviewSummary.platformRating !== null ? { platformRating: reviewSummary.platformRating } : {}),
+      reputationScore: reputation.score,
+      ...(paidOrders > 0
+        ? {
+            paidOrders,
+            refundRate: reputation.signals.refunds / paidOrders,
+            accessBridgeSuccessRate: reputation.signals.confirmedAccessBridges / paidOrders
+          }
+        : {})
+    };
+
+    return {
+      ...entry,
+      platformSignals: {
+        ...entry.platformSignals,
+        ...dynamicSignals
+      }
+    };
+  });
 }
 
 function formatRecommendationFallbackReason(error: unknown): string {
@@ -600,6 +694,35 @@ function readOptionalNumber(payload: Record<string, unknown>, key: string): numb
     throw new PlatformApiError(400, `${key} must be a number.`);
   }
   return value;
+}
+
+function readOverallRating(payload: Record<string, unknown>, key: string): number {
+  const value = payload[key];
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 5) {
+    throw new PlatformApiError(400, `${key} must be an integer from 1 to 5.`);
+  }
+  return value;
+}
+
+function readOptionalUsageReviewDimensionRatings(
+  payload: Record<string, unknown>,
+  key: string
+): UsageReviewDimensionRatings | undefined {
+  const value = payload[key];
+  if (value === undefined || value === null) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new PlatformApiError(400, `${key} must be a JSON object.`);
+  }
+  const record = value as Record<string, unknown>;
+  const ratings: Partial<UsageReviewDimensionRatings> = {};
+  for (const dimension of USAGE_REVIEW_DIMENSIONS) {
+    const rating = record[dimension];
+    if (rating !== 0 && rating !== 1 && rating !== 2) {
+      throw new PlatformApiError(400, `${key}.${dimension} must be 0, 1, or 2.`);
+    }
+    ratings[dimension] = rating;
+  }
+  return ratings as UsageReviewDimensionRatings;
 }
 
 function readRequiredAmount(payload: Record<string, unknown>, key: string): string | number {
