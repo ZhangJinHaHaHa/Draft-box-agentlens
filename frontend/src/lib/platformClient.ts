@@ -65,6 +65,8 @@ export interface PaidLlmRecommendationResponse {
   recommendation: RecommendationApiResponse;
 }
 
+const PAID_LLM_RECOMMENDATION_TIMEOUT_MS = 20_000;
+
 export async function createMockGoogleUser(
   apiBaseUrl: string,
   input: { googleSubject: string; email: string },
@@ -77,9 +79,10 @@ export async function createMockGoogleUser(
 export async function requestPaidLlmRecommendation(
   apiBaseUrl: string,
   request: RecommendationRequest & { userId: string },
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs = PAID_LLM_RECOMMENDATION_TIMEOUT_MS
 ): Promise<PaidLlmRecommendationResponse> {
-  const payload = await postJson(apiBaseUrl, "/api/recommendations/llm", request, fetchImpl);
+  const payload = await postJson(apiBaseUrl, "/api/recommendations/llm", request, fetchImpl, timeoutMs);
   return parsePaidLlmRecommendationResponse(payload);
 }
 
@@ -156,22 +159,43 @@ async function postJson(
   apiBaseUrl: string,
   path: string,
   body: unknown,
-  fetchImpl: typeof fetch
+  fetchImpl: typeof fetch,
+  timeoutMs?: number
 ): Promise<unknown> {
   const baseUrl = apiBaseUrl.replace(/\/+$/, "");
-  const response = await fetchImpl(`${baseUrl}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
+  const controller = timeoutMs ? new AbortController() : undefined;
+  const timeout = controller ? globalThis.setTimeout(() => controller.abort(), timeoutMs) : undefined;
+  let response: Response;
+
+  try {
+    response = await fetchImpl(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      ...(controller ? { signal: controller.signal } : {}),
+      body: JSON.stringify(body)
+    });
+  } catch (error) {
+    if (isAbortError(error) && timeoutMs) {
+      throw new Error(`Platform API request timed out after ${timeoutMs}ms.`);
+    }
+    throw error;
+  } finally {
+    if (timeout !== undefined) {
+      globalThis.clearTimeout(timeout);
+    }
+  }
 
   if (!response.ok) {
     throw new Error(`Platform API responded with status ${response.status}.`);
   }
 
   return response.json();
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
 }
 
 function parseMockGoogleLoginResponse(payload: unknown): PlatformMockGoogleLoginResponse {

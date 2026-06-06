@@ -16,6 +16,7 @@ export interface RecommendationLlmConfig {
   apiKey?: string;
   model?: string;
   apiBaseUrl?: string;
+  timeoutMs?: number;
 }
 
 export interface RecommendationLlmClient {
@@ -32,6 +33,7 @@ export interface RecommendationLlmInput {
 export type FetchLike = typeof fetch;
 
 const OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
+const OPENAI_DEFAULT_TIMEOUT_MS = 12_000;
 
 export function createRecommendationLlmClient(
   config: RecommendationLlmConfig,
@@ -80,34 +82,49 @@ function createOpenAiRecommendationLlmClient(
     engine: "openai",
     async recommend(input: RecommendationLlmInput): Promise<RecommendationResponse> {
       const baseUrl = (config.apiBaseUrl ?? OPENAI_DEFAULT_BASE_URL).replace(/\/+$/, "");
-      const response = await fetchImpl(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${config.apiKey}`
-        },
-        body: JSON.stringify({
-          model: config.model,
-          temperature: 0.2,
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "system",
-              content: [
-                "You are AgentLens' selection advisor.",
-                "Primary objective: recommend the AI agents that best fit the user's stated need.",
-                "Use trust and risk signals as tie breakers and explain tradeoffs clearly.",
-                "Never recommend an agent outside the provided candidate catalog.",
-                "Return strict JSON only."
-              ].join(" ")
-            },
-            {
-              role: "user",
-              content: buildRecommendationLlmPrompt(input)
-            }
-          ]
-        })
-      });
+      const timeoutMs = config.timeoutMs ?? OPENAI_DEFAULT_TIMEOUT_MS;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      let response: Response;
+
+      try {
+        response = await fetchImpl(`${baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${config.apiKey}`
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: config.model,
+            temperature: 0.2,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "system",
+                content: [
+                  "You are AgentLens' selection advisor.",
+                  "Primary objective: recommend the AI agents that best fit the user's stated need.",
+                  "Use trust and risk signals as tie breakers and explain tradeoffs clearly.",
+                  "Never recommend an agent outside the provided candidate catalog.",
+                  "Return strict JSON only."
+                ].join(" ")
+              },
+              {
+                role: "user",
+                content: buildRecommendationLlmPrompt(input)
+              }
+            ]
+          })
+        });
+      } catch (error) {
+        if (isAbortError(error)) {
+          throw new Error(`Recommendation LLM request timed out after ${timeoutMs}ms.`);
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
 
       if (!response.ok) {
         throw new Error(`Recommendation LLM request failed with status ${response.status}.`);
@@ -117,6 +134,10 @@ function createOpenAiRecommendationLlmClient(
       return parseOpenAiRecommendationResponse(body, input);
     }
   };
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
 }
 
 async function readOpenAiResponseBody(response: Response): Promise<unknown> {

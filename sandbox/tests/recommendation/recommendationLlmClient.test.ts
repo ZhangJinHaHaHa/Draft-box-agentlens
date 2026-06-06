@@ -117,6 +117,38 @@ test("openai recommendation client parses valid JSON response", async () => {
   assert.deepEqual(response.results[0].evidenceUsed, ["scenario:knowledge-qa", "priority:self-host"]);
 });
 
+test("openai recommendation client aborts slow requests", async () => {
+  const fetchImpl: FetchLike = async (_input, init) =>
+    new Promise<Response>((_resolve, reject) => {
+      const signal = init?.signal;
+      assert.ok(signal);
+      signal.addEventListener(
+        "abort",
+        () => {
+          const error = new Error("aborted");
+          error.name = "AbortError";
+          reject(error);
+        },
+        { once: true }
+      );
+    });
+
+  const client = createRecommendationLlmClient(
+    { provider: "openai", apiKey: "sk-test", model: "test-model", timeoutMs: 5 },
+    fetchImpl
+  );
+
+  await assert.rejects(
+    () =>
+      client.recommend({
+        catalog: defaultRecommendationCatalog,
+        request,
+        baseline
+      }),
+    /timed out after 5ms/
+  );
+});
+
 test("openai recommendation client falls back to baseline selection metadata", async () => {
   const fetchImpl: FetchLike = async (_input, _init) =>
     new Response(

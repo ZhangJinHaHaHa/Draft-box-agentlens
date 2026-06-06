@@ -24,7 +24,8 @@ test("readPlatformApiConfig reads persistence and LLM overrides", () => {
       PLATFORM_RECOMMENDATION_LLM_PROVIDER: "openai",
       PLATFORM_RECOMMENDATION_LLM_API_KEY: "sk-test",
       PLATFORM_RECOMMENDATION_LLM_MODEL: "test-model",
-      PLATFORM_RECOMMENDATION_LLM_API_BASE_URL: "https://llm.example/v1"
+      PLATFORM_RECOMMENDATION_LLM_API_BASE_URL: "https://llm.example/v1",
+      PLATFORM_RECOMMENDATION_LLM_TIMEOUT_MS: "8000"
     }),
     {
       host: "0.0.0.0",
@@ -35,8 +36,20 @@ test("readPlatformApiConfig reads persistence and LLM overrides", () => {
         provider: "openai",
         apiKey: "sk-test",
         model: "test-model",
-        apiBaseUrl: "https://llm.example/v1"
+        apiBaseUrl: "https://llm.example/v1",
+        timeoutMs: 8000
       }
     }
+  );
+});
+
+test("readPlatformApiConfig defaults OpenAI recommendation timeout", () => {
+  assert.equal(
+    readPlatformApiConfig({
+      PLATFORM_RECOMMENDATION_LLM_PROVIDER: "openai",
+      PLATFORM_RECOMMENDATION_LLM_API_KEY: "sk-test",
+      PLATFORM_RECOMMENDATION_LLM_MODEL: "test-model"
+    }).recommendationLlm.timeoutMs,
+    12_000
   );
 });

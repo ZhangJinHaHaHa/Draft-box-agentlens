@@ -21,7 +21,11 @@ export function readPlatformApiConfig(
     host: readOptionalString(env.PLATFORM_API_HOST) ?? "127.0.0.1",
     port: readPort(env.PLATFORM_API_PORT, 8790),
     stateDir: resolvePlatformApiStateDir(readOptionalString(env.PLATFORM_API_STATE_DIR)),
-    recommendationCostCredits: readPositiveInt(env.PLATFORM_LLM_RECOMMENDATION_COST_CREDITS, 3),
+    recommendationCostCredits: readPositiveInt(
+      env.PLATFORM_LLM_RECOMMENDATION_COST_CREDITS,
+      3,
+      "PLATFORM_LLM_RECOMMENDATION_COST_CREDITS"
+    ),
     ...(recommendationCatalogPath ? { recommendationCatalogPath: path.resolve(recommendationCatalogPath) } : {}),
     recommendationLlm: readRecommendationLlmConfig(env)
   };
@@ -44,14 +48,14 @@ function readPort(value: string | undefined, fallback: number): number {
   return port;
 }
 
-function readPositiveInt(value: string | undefined, fallback: number): number {
+function readPositiveInt(value: string | undefined, fallback: number, key: string): number {
   if (!value || value.trim() === "") return fallback;
   if (!/^\d+$/.test(value.trim())) {
-    throw new Error("PLATFORM_LLM_RECOMMENDATION_COST_CREDITS must be a positive integer.");
+    throw new Error(`${key} must be a positive integer.`);
   }
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
-    throw new Error("PLATFORM_LLM_RECOMMENDATION_COST_CREDITS must be a positive integer.");
+    throw new Error(`${key} must be a positive integer.`);
   }
   return parsed;
 }
@@ -71,11 +75,17 @@ function readRecommendationLlmConfig(
   const apiKey = readOptionalString(env.PLATFORM_RECOMMENDATION_LLM_API_KEY);
   const model = readOptionalString(env.PLATFORM_RECOMMENDATION_LLM_MODEL);
   const apiBaseUrl = readOptionalString(env.PLATFORM_RECOMMENDATION_LLM_API_BASE_URL);
+  const timeoutMs = readPositiveInt(
+    env.PLATFORM_RECOMMENDATION_LLM_TIMEOUT_MS,
+    12_000,
+    "PLATFORM_RECOMMENDATION_LLM_TIMEOUT_MS"
+  );
 
   return {
     provider,
     ...(apiKey ? { apiKey } : {}),
     ...(model ? { model } : {}),
-    ...(apiBaseUrl ? { apiBaseUrl } : {})
+    ...(apiBaseUrl ? { apiBaseUrl } : {}),
+    timeoutMs
   };
 }

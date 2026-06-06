@@ -36,6 +36,7 @@ interface RecommendationRunMeta {
   engine?: string;
   charged?: boolean;
   fallbackUsed?: boolean;
+  fallbackReason?: string;
   costCredits?: number;
   balanceAfter?: number;
 }
@@ -105,6 +106,7 @@ export function RecommendPage({ config }: RecommendPageProps): JSX.Element {
           engine: response.engine,
           charged: response.charged,
           fallbackUsed: response.fallbackUsed,
+          fallbackReason: response.fallbackReason,
           costCredits: response.costCredits,
           balanceAfter: response.creditAccount.balance
         });
@@ -252,6 +254,11 @@ export function RecommendPage({ config }: RecommendPageProps): JSX.Element {
               ) : null}
               {runMeta.fallbackUsed ? <Badge variant="warning">{t("results.meta.fallback")}</Badge> : null}
             </div>
+          ) : null}
+          {status === "done" && runMeta?.fallbackReason ? (
+            <p className="rounded-md border border-amber-300/40 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+              {runMeta.fallbackReason}
+            </p>
           ) : null}
 
           {visibleResults.map(({ entry, result }, index) => (

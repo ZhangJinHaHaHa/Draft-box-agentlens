@@ -86,6 +86,34 @@ describe("platformClient", () => {
     expect(response.recommendation.results[0].agentId).toBe("dify");
   });
 
+  it("times out a stuck paid LLM recommendation request", async () => {
+    await expect(
+      requestPaidLlmRecommendation(
+        "https://platform.example",
+        {
+          userId: "web2-user-1",
+          query: "自托管 RAG API",
+          limit: 2
+        },
+        async (_url, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            const signal = init?.signal;
+            expect(signal).toBeTruthy();
+            signal?.addEventListener(
+              "abort",
+              () => {
+                const error = new Error("aborted");
+                error.name = "AbortError";
+                reject(error);
+              },
+              { once: true }
+            );
+          }),
+        5
+      )
+    ).rejects.toThrow("timed out after 5ms");
+  });
+
   it("reads platform credits", async () => {
     const account = await getPlatformCredits(
       "https://platform.example/",
