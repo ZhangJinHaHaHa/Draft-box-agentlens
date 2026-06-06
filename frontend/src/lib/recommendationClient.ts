@@ -49,7 +49,10 @@ interface GetRecommendationsOptions {
   catalog: readonly AgentCatalogEntry[];
   fallback: () => RecommendationCandidate[];
   fetchImpl?: typeof fetch;
+  timeoutMs?: number;
 }
+
+const RECOMMENDATION_API_TIMEOUT_MS = 10_000;
 
 export function buildLocalRecommendationResponse(
   entries: readonly AgentCatalogEntry[],
@@ -68,16 +71,16 @@ export function buildLocalRecommendationResponse(
 export async function requestRecommendations(
   apiBaseUrl: string,
   request: RecommendationRequest,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs = RECOMMENDATION_API_TIMEOUT_MS
 ): Promise<RecommendationApiResponse> {
   const baseUrl = apiBaseUrl.replace(/\/+$/, "");
-  const response = await fetchImpl(`${baseUrl}/api/recommendations`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(request)
-  });
+  const response = await postRecommendationJson(
+    `${baseUrl}/api/recommendations`,
+    request,
+    fetchImpl,
+    timeoutMs
+  );
 
   if (!response.ok) {
     throw new Error(`Recommendation API responded with status ${response.status}.`);
@@ -102,17 +105,14 @@ export async function getRecommendations({
   input,
   catalog,
   fallback,
-  fetchImpl = fetch
+  fetchImpl = fetch,
+  timeoutMs = RECOMMENDATION_API_TIMEOUT_MS
 }: GetRecommendationsOptions): Promise<RecommendationResult> {
   const local = () => ({ source: "local" as const, candidates: fallback() });
   if (!apiUrl) return local();
 
   try {
-    const response = await fetchImpl(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input })
-    });
+    const response = await postRecommendationJson(apiUrl, { input }, fetchImpl, timeoutMs);
     const body = await response.json().catch(() => ({}));
     if (!response.ok || body?.ok !== true || !Array.isArray(body?.candidates)) {
       return {
@@ -184,6 +184,36 @@ function parseRecommendationApiResult(payload: unknown): RecommendationApiResult
   };
 }
 
+async function postRecommendationJson(
+  url: string,
+  body: unknown,
+  fetchImpl: typeof fetch,
+  timeoutMs: number
+): Promise<Response> {
+  const controller = timeoutMs > 0 ? new AbortController() : undefined;
+  const timeout = controller
+    ? globalThis.setTimeout(() => controller.abort(), timeoutMs)
+    : undefined;
+
+  try {
+    return await fetchImpl(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      ...(controller ? { signal: controller.signal } : {}),
+      body: JSON.stringify(body)
+    });
+  } catch (error) {
+    if (isAbortError(error) && timeoutMs > 0) {
+      throw new Error(`Recommendation API request timed out after ${timeoutMs}ms.`);
+    }
+    throw error;
+  } finally {
+    if (timeout !== undefined) {
+      globalThis.clearTimeout(timeout);
+    }
+  }
+}
+
 function toRecommendationCandidate(
   candidate: RecommendationApiCandidate,
   byId: Map<string, AgentCatalogEntry>
@@ -213,4 +243,13 @@ function isRecommendationConfidence(value: unknown): value is NonNullable<Recomm
 
 function isRecommendationType(value: unknown): value is NonNullable<RecommendationApiResult["recommendationType"]> {
   return value === "best_fit" || value === "trusted_pick" || value === "fast_start" || value === "specialized";
+}
+
+function isAbortError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "name" in error &&
+      (error as { name?: unknown }).name === "AbortError"
+  );
 }

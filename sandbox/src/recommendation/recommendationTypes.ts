@@ -35,7 +35,7 @@ export interface RecommendationCatalogEntry {
   hasOnboardingGuide: boolean;
   hasAuditEvidence?: boolean;
   platformSignals?: RecommendationPlatformSignals;
-  source?: "curated" | "listed" | "native";
+  source?: "curated" | "marketplace" | "listed" | "native";
 }
 
 export interface RecommendationRequest {

@@ -41,7 +41,9 @@ function parseCatalogEntry(value: unknown): RecommendationCatalogEntry {
     hasOnboardingGuide: Boolean(record.hasOnboardingGuide),
     ...(typeof record.hasAuditEvidence === "boolean" ? { hasAuditEvidence: record.hasAuditEvidence } : {}),
     ...(platformSignals ? { platformSignals } : {}),
-    ...(readOptionalString(record.source) ? { source: readEnum(record.source, ["curated", "listed", "native"] as const, "source") } : {})
+    ...(readOptionalString(record.source)
+      ? { source: readEnum(record.source, ["curated", "marketplace", "listed", "native"] as const, "source") }
+      : {})
   };
 
   return entry;

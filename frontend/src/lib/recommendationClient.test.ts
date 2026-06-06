@@ -117,6 +117,37 @@ describe("recommendationClient platform response contract", () => {
       missingEvidence: ["platform_reputation"]
     });
   });
+
+  it("times out public recommendation API requests instead of waiting forever", async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn((_url: string | URL | Request, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(new DOMException("Aborted", "AbortError"));
+        });
+      });
+    });
+
+    try {
+      const responsePromise = requestRecommendations(
+        "https://recommend.example",
+        { query: "support" },
+        fetchImpl,
+        50
+      );
+      const assertion = expect(responsePromise).rejects.toThrow("Recommendation API request timed out after 50ms.");
+
+      await vi.advanceTimersByTimeAsync(50);
+
+      await assertion;
+      expect(fetchImpl).toHaveBeenCalledWith(
+        "https://recommend.example/api/recommendations",
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("getRecommendations", () => {
@@ -167,5 +198,44 @@ describe("getRecommendations", () => {
     expect(result.source).toBe("api-fallback");
     expect(result.error).toBe("down");
     expect(result.candidates).toEqual([localCandidate]);
+  });
+
+  it("falls back to local rules when the recommendation API hangs", async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn((_url: string | URL | Request, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(new DOMException("Aborted", "AbortError"));
+        });
+      });
+    });
+
+    try {
+      const resultPromise = getRecommendations({
+        apiUrl: "https://api.example.com/recommend",
+        input,
+        catalog: [],
+        fallback: () => [localCandidate],
+        fetchImpl,
+        timeoutMs: 50
+      });
+
+      await vi.advanceTimersByTimeAsync(50);
+
+      await expect(resultPromise).resolves.toMatchObject({
+        source: "api-fallback",
+        candidates: [localCandidate],
+        error: "Recommendation API request timed out after 50ms."
+      });
+      expect(fetchImpl).toHaveBeenCalledWith(
+        "https://api.example.com/recommend",
+        expect.objectContaining({
+          method: "POST",
+          signal: expect.any(AbortSignal)
+        })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -1,4 +1,4 @@
-import type { RecommendationCatalogEntry } from "./recommendationTypes";
+import type { RecommendationCatalogEntry, RecommendationText } from "./recommendationTypes";
 
 export const defaultRecommendationCatalog: RecommendationCatalogEntry[] = [
   {
@@ -288,5 +288,442 @@ export const defaultRecommendationCatalog: RecommendationCatalogEntry[] = [
     complexity: "high",
     hasOnboardingGuide: false,
     source: "listed"
+  },
+  {
+    id: "v0",
+    name: "v0 by Vercel",
+    vendor: "Vercel",
+    intro: {
+      zh: "UI / 全栈原型生成 Agent，适合快速交付可部署的 Next.js + Tailwind 原型。",
+      en: "UI and full-stack prototyping agent for quickly shipping deployable Next.js + Tailwind prototypes."
+    },
+    category: "UI prototyping",
+    tags: ["ui", "nextjs", "tailwind", "prototype"],
+    scenarioIds: ["ui-prototyping", "fullstack-prototyping", "content-generation"],
+    unsuitableScenarioIds: ["defi-trading", "devops-sre"],
+    riskLevel: "low",
+    accessTypes: ["saas"],
+    complexity: "low",
+    hasOnboardingGuide: true,
+    source: "curated"
+  },
+  {
+    id: "lovable",
+    name: "Lovable",
+    vendor: "Lovable",
+    intro: {
+      zh: "面向非技术创始人的全栈应用 Agent，通过自然语言迭代 React + Supabase 应用。",
+      en: "Full-stack app builder for non-technical founders iterating React + Supabase apps in natural language."
+    },
+    category: "Full-stack app builder",
+    tags: ["nocode", "react", "supabase", "founder"],
+    scenarioIds: ["fullstack-prototyping", "ui-prototyping", "workflow-automation"],
+    unsuitableScenarioIds: ["devops-sre", "data-analysis"],
+    riskLevel: "medium",
+    accessTypes: ["saas"],
+    complexity: "low",
+    hasOnboardingGuide: true,
+    source: "curated"
+  },
+  {
+    id: "replit-agent",
+    name: "Replit Agent",
+    vendor: "Replit",
+    intro: {
+      zh: "Replit 内置全栈 Agent，结合在线 IDE 与一键部署，适合从想法快速到可访问 URL。",
+      en: "Replit's built-in full-stack agent with online IDE and one-click deploy for the shortest path to a running URL."
+    },
+    category: "Full-stack agent",
+    tags: ["replit", "ide", "deploy", "fullstack"],
+    scenarioIds: ["fullstack-prototyping", "ui-prototyping", "developer-assistant"],
+    unsuitableScenarioIds: ["defi-trading", "devops-sre"],
+    riskLevel: "medium",
+    accessTypes: ["saas", "cloud"],
+    complexity: "low",
+    hasOnboardingGuide: true,
+    source: "curated"
+  },
+  {
+    id: "bolt-new",
+    name: "Bolt.new",
+    vendor: "StackBlitz",
+    intro: {
+      zh: "浏览器内全栈 Agent，可在 WebContainer 中直接运行 Node.js + Vite 项目。",
+      en: "In-browser full-stack agent that runs Node.js + Vite projects directly inside WebContainer."
+    },
+    category: "Browser full-stack",
+    tags: ["webcontainer", "vite", "node", "fullstack"],
+    scenarioIds: ["fullstack-prototyping", "ui-prototyping", "developer-assistant"],
+    unsuitableScenarioIds: ["defi-trading", "devops-sre"],
+    riskLevel: "low",
+    accessTypes: ["saas"],
+    complexity: "low",
+    hasOnboardingGuide: true,
+    source: "curated"
+  },
+  {
+    id: "midjourney",
+    name: "Midjourney",
+    vendor: "Midjourney",
+    intro: {
+      zh: "高质量图像生成工具，适合快速探索风格化视觉素材。",
+      en: "High-quality image generation tool for quickly exploring stylized visual assets."
+    },
+    category: "Image generation",
+    tags: ["image", "design", "creative"],
+    scenarioIds: ["content-generation", "ui-prototyping"],
+    unsuitableScenarioIds: ["ide-coding"],
+    riskLevel: "low",
+    accessTypes: ["saas", "browser_ext"],
+    complexity: "low",
+    hasOnboardingGuide: false,
+    source: "listed"
+  },
+  {
+    id: "elevenlabs",
+    name: "ElevenLabs",
+    vendor: "ElevenLabs",
+    intro: {
+      zh: "语音合成与多语种配音平台，适合内容团队批量生成音频。",
+      en: "Text-to-speech and multilingual voiceover platform for content teams producing audio at scale."
+    },
+    category: "Voice generation",
+    tags: ["voice", "tts", "multilingual"],
+    scenarioIds: ["content-generation", "customer-support"],
+    unsuitableScenarioIds: ["ide-coding"],
+    riskLevel: "medium",
+    accessTypes: ["saas", "api"],
+    complexity: "low",
+    hasOnboardingGuide: false,
+    source: "listed"
+  },
+  {
+    id: "harvey",
+    name: "Harvey",
+    vendor: "Harvey",
+    intro: {
+      zh: "面向法律与专业服务的垂类 Agent，企业部署为主，输出仍需专业人士复核。",
+      en: "Vertical agent for legal and professional services, mostly enterprise deployed, with outputs still requiring expert review."
+    },
+    category: "Vertical legal agent",
+    tags: ["legal", "enterprise", "professional-services"],
+    scenarioIds: ["legal-defense", "ip-patent", "knowledge-qa", "market-research"],
+    unsuitableScenarioIds: ["ide-coding"],
+    riskLevel: "medium",
+    accessTypes: ["saas"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "listed"
+  },
+  {
+    id: "google-gemini",
+    name: "Google Gemini",
+    vendor: "Google",
+    intro: {
+      zh: "Google 的通用多模态助手，覆盖网页、移动端与 Gemini API。",
+      en: "Google's general-purpose multimodal assistant across web, mobile and Gemini API access."
+    },
+    category: "General assistant",
+    tags: ["google", "llm", "multimodal"],
+    scenarioIds: ["knowledge-qa", "content-generation", "market-research", "multimodal-chat"],
+    unsuitableScenarioIds: ["defi-trading"],
+    riskLevel: "low",
+    accessTypes: ["saas", "api"],
+    complexity: "low",
+    hasOnboardingGuide: false,
+    source: "listed"
+  },
+  {
+    id: "glean",
+    name: "Glean",
+    vendor: "Glean",
+    intro: {
+      zh: "企业知识搜索与工作助手，连接公司文档、聊天和业务系统。",
+      en: "Enterprise search and work assistant connecting company docs, chat and business systems."
+    },
+    category: "Enterprise knowledge agent",
+    tags: ["enterprise", "search", "knowledge"],
+    scenarioIds: ["knowledge-qa", "market-research", "workflow-automation"],
+    unsuitableScenarioIds: ["ide-coding"],
+    riskLevel: "medium",
+    accessTypes: ["saas", "api"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "listed"
+  },
+  {
+    id: "sierra-ai",
+    name: "Sierra",
+    vendor: "Sierra",
+    intro: {
+      zh: "企业客户体验对话 Agent，强调品牌控制、业务系统动作和人工兜底。",
+      en: "Enterprise customer-experience agent emphasizing brand control, business-system actions and human fallback."
+    },
+    category: "Customer experience agent",
+    tags: ["support", "enterprise", "automation"],
+    scenarioIds: ["customer-support", "workflow-automation"],
+    unsuitableScenarioIds: ["ide-coding"],
+    riskLevel: "medium",
+    accessTypes: ["saas", "api"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "listed"
+  },
+  {
+    id: "synthesia",
+    name: "Synthesia",
+    vendor: "Synthesia",
+    intro: {
+      zh: "企业视频生成平台，常用于培训、产品说明和多语言视频本地化。",
+      en: "Enterprise video generation platform for training, product explainers and multilingual localization."
+    },
+    category: "Video generation",
+    tags: ["video", "avatar", "enterprise"],
+    scenarioIds: ["content-generation", "customer-support"],
+    unsuitableScenarioIds: ["ide-coding"],
+    riskLevel: "medium",
+    accessTypes: ["saas", "api"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "listed"
+  },
+  {
+    id: "expert-criminal-defense",
+    name: "无罪辩点·刑辩数字律师",
+    vendor: "执业刑辩律师 · 14 年一线",
+    intro: {
+      zh: "由执业刑辩律师上架，基于真实案卷、辩点库与当地量刑倾向，辅助梳理辩护思路和争议焦点。",
+      en: "Listed by a criminal-defense lawyer, backed by real case files, defense-angle libraries and local sentencing patterns."
+    },
+    category: "Legal expert agent",
+    tags: ["legal", "criminal-defense", "lawyer", "case-files", "expert"],
+    scenarioIds: ["legal-defense"],
+    unsuitableScenarioIds: ["ide-coding", "content-generation"],
+    riskLevel: "medium",
+    accessTypes: ["saas"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  },
+  {
+    id: "expert-tax-planning",
+    name: "中小企业税务筹划数字员工",
+    vendor: "注册税务师 · 服务过 300+ 企业",
+    intro: {
+      zh: "由注册税务师上架，沉淀数百个中小企业筹划方案与当地税局实操口径，辅助合规节税路径梳理。",
+      en: "Listed by a certified tax adviser with hundreds of SME planning cases and local tax-bureau practice notes."
+    },
+    category: "Tax expert agent",
+    tags: ["tax", "finance", "sme", "planning", "expert"],
+    scenarioIds: ["tax-planning"],
+    unsuitableScenarioIds: ["customer-support"],
+    riskLevel: "medium",
+    accessTypes: ["saas", "api"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  },
+  {
+    id: "expert-patent-oa",
+    name: "专利 OA 答审数字代理人",
+    vendor: "专利代理师 · 撰写授权 800+ 件",
+    intro: {
+      zh: "由专利代理师上架，携带 OA 答审策略、驳回理由和领域授权率经验，辅助草拟审查意见答复。",
+      en: "Listed by a patent attorney with OA response strategies, rejection-pattern knowledge and field-level grant-rate experience."
+    },
+    category: "IP expert agent",
+    tags: ["patent", "ip", "office-action", "expert"],
+    scenarioIds: ["ip-patent", "legal-defense"],
+    unsuitableScenarioIds: ["content-generation"],
+    riskLevel: "low",
+    accessTypes: ["saas"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  },
+  {
+    id: "expert-venture-dd",
+    name: "早期项目尽调数字分析师",
+    vendor: "前美元基金投资人 · 看过 2000+ 项目",
+    intro: {
+      zh: "由早期投资人上架，基于私有 deal memo、估值 comps 与投后复盘库，辅助识别项目红旗。",
+      en: "Listed by an early-stage investor using private deal memos, valuation comps and post-mortems to flag deal risks."
+    },
+    category: "Investment expert agent",
+    tags: ["investment", "due-diligence", "venture", "red-flags", "expert"],
+    scenarioIds: ["venture-dd", "market-research"],
+    unsuitableScenarioIds: ["ide-coding"],
+    riskLevel: "medium",
+    accessTypes: ["saas", "api"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  },
+  {
+    id: "expert-ecom-sourcing",
+    name: "亚马逊蓝海选品数字买手",
+    vendor: "亚马逊大卖 · 7 年选品数据",
+    intro: {
+      zh: "由亚马逊卖家上架，基于选品 win/loss、广告 ROI 与供应链底价记录，辅助筛选低竞争品类。",
+      en: "Listed by an Amazon seller using product win/loss history, ad ROI and supplier floor-price records for niche selection."
+    },
+    category: "E-commerce expert agent",
+    tags: ["ecommerce", "amazon", "sourcing", "margin", "expert"],
+    scenarioIds: ["ecom-sourcing", "market-research"],
+    unsuitableScenarioIds: ["devops-sre"],
+    riskLevel: "low",
+    accessTypes: ["saas"],
+    complexity: "low",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  },
+  {
+    id: "expert-content-ops",
+    name: "小红书爆款选题数字操盘手",
+    vendor: "MCN 操盘手 · 跑过千条投放",
+    intro: {
+      zh: "由 MCN 操盘手上架，基于上千条投放数据、选题转化率与账号定位样本，辅助生成选题和开头。",
+      en: "Listed by an MCN operator using thousands of campaign records and topic-conversion data to generate account-fit topics."
+    },
+    category: "Content expert agent",
+    tags: ["content", "xiaohongshu", "marketing", "campaign", "expert"],
+    scenarioIds: ["content-ops", "content-generation"],
+    unsuitableScenarioIds: ["ide-coding"],
+    riskLevel: "low",
+    accessTypes: ["saas"],
+    complexity: "low",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  },
+  {
+    id: "expert-insurance-claim",
+    name: "重疾拒赔申诉数字顾问",
+    vendor: "前理赔调查员 · 经手 1000+ 案",
+    intro: {
+      zh: "由前理赔调查员上架，基于拒赔条款、调查路径与申诉模板，辅助判断拒赔和组织申诉材料。",
+      en: "Listed by a former claims investigator using denial clauses, investigation patterns and appeal templates."
+    },
+    category: "Insurance expert agent",
+    tags: ["insurance", "claims", "appeal", "expert"],
+    scenarioIds: ["insurance-claim", "legal-defense"],
+    unsuitableScenarioIds: ["ide-coding"],
+    riskLevel: "medium",
+    accessTypes: ["saas"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  },
+  {
+    id: "expert-construction-review",
+    name: "施工图审查避坑数字工程师",
+    vendor: "结构工程师 · 审过 500+ 套图",
+    intro: {
+      zh: "由结构工程师上架，基于审图意见、消防规范和高频驳回点，辅助送审前自查施工图。",
+      en: "Listed by a structural engineer using review comments, fire-code constraints and frequent rejection patterns."
+    },
+    category: "Engineering expert agent",
+    tags: ["construction", "structural", "compliance", "expert"],
+    scenarioIds: ["construction-review"],
+    unsuitableScenarioIds: ["customer-support"],
+    riskLevel: "medium",
+    accessTypes: ["saas"],
+    complexity: "medium",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  },
+  {
+    id: "expert-exec-recruiting",
+    name: "芯片行业高端猎头数字顾问",
+    vendor: "半导体猎头 · 私有候选人池",
+    intro: {
+      zh: "由半导体猎头上架，基于候选人画像、placement 数据与 JD 响应记录，辅助招聘策略和 JD 改写。",
+      en: "Listed by a semiconductor recruiter using talent profiles, placement history and JD response records."
+    },
+    category: "Recruiting expert agent",
+    tags: ["recruiting", "semiconductor", "talent", "jd", "expert"],
+    scenarioIds: ["exec-recruiting"],
+    unsuitableScenarioIds: ["customer-support"],
+    riskLevel: "low",
+    accessTypes: ["saas"],
+    complexity: "low",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  },
+  {
+    id: "expert-study-abroad",
+    name: "美研申请文书数字顾问",
+    vendor: "留学顾问 · 1500+ 成功申请",
+    intro: {
+      zh: "由留学顾问上架，基于学校录取偏好、文书结构样本与申请结果复盘，辅助申请文书打磨。",
+      en: "Listed by a study-abroad counsellor using school-level preferences, essay structures and admissions post-mortems."
+    },
+    category: "Education expert agent",
+    tags: ["education", "study-abroad", "essay", "admission", "expert"],
+    scenarioIds: ["study-abroad", "content-generation"],
+    unsuitableScenarioIds: ["devops-sre"],
+    riskLevel: "low",
+    accessTypes: ["saas"],
+    complexity: "low",
+    hasOnboardingGuide: false,
+    source: "marketplace"
+  }
+];
+
+export interface RecommendationSelectionGroup {
+  id: string;
+  label: RecommendationText;
+  agentIds: string[];
+}
+
+export const recommendationSelectionGroups: RecommendationSelectionGroup[] = [
+  {
+    id: "coding-assistants",
+    label: { zh: "编码助手", en: "Coding assistants" },
+    agentIds: ["cursor", "github-copilot", "windsurf"]
+  },
+  {
+    id: "app-prototyping",
+    label: { zh: "应用原型", en: "App prototyping" },
+    agentIds: ["v0", "lovable", "replit-agent", "bolt-new"]
+  },
+  {
+    id: "knowledge-rag",
+    label: { zh: "知识库与 RAG", en: "Knowledge and RAG" },
+    agentIds: ["dify", "flowise", "glean", "notion-ai"]
+  },
+  {
+    id: "customer-experience",
+    label: { zh: "客户体验", en: "Customer experience" },
+    agentIds: ["intercom-fin", "ada-ai", "sierra-ai"]
+  },
+  {
+    id: "workflow-automation",
+    label: { zh: "流程自动化", en: "Workflow automation" },
+    agentIds: ["zapier-agents", "n8n-ai", "langgraph-platform", "crewai-platform"]
+  },
+  {
+    id: "research-assistants",
+    label: { zh: "调研助手", en: "Research assistants" },
+    agentIds: ["perplexity", "you-com", "openai-gpt5", "google-gemini"]
+  },
+  {
+    id: "creative-media",
+    label: { zh: "内容与媒体生成", en: "Creative media" },
+    agentIds: ["runway", "midjourney", "synthesia", "elevenlabs"]
+  },
+  {
+    id: "legal-professional",
+    label: { zh: "法律与知产专业服务", en: "Legal and IP professional services" },
+    agentIds: ["expert-criminal-defense", "expert-patent-oa", "harvey"]
+  },
+  {
+    id: "business-advisory",
+    label: { zh: "商业专业顾问", en: "Business advisory" },
+    agentIds: ["expert-tax-planning", "expert-venture-dd", "expert-ecom-sourcing", "expert-exec-recruiting"]
+  },
+  {
+    id: "regulated-review",
+    label: { zh: "高风险材料复核", en: "Regulated review" },
+    agentIds: ["expert-insurance-claim", "expert-construction-review", "expert-study-abroad", "expert-tax-planning"]
   }
 ];

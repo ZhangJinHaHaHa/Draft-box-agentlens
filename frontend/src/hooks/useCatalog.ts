@@ -22,10 +22,12 @@ export interface UseCatalogResult extends MergedCatalog {
   nativeError: string | null;
 }
 
+const NOOP_NATIVE_CLIENT = createNoopClient();
+
 export function useCatalog({ config, nativeAgents, skipNative }: UseCatalogOptions): UseCatalogResult {
   const native = useNativeAgents({
     config,
-    client: skipNative ? createNoopClient() : undefined
+    client: skipNative ? NOOP_NATIVE_CLIENT : undefined
   });
 
   const merged = useMemo(() => {

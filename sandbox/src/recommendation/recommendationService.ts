@@ -16,6 +16,7 @@ const RISK_WEIGHT: Record<RecommendationRiskLevel, number> = { low: 0, medium: 1
 const COMPLEXITY_WEIGHT: Record<RecommendationComplexity, number> = { low: 0, medium: 1, high: 2 };
 const SOURCE_SCORE: Record<NonNullable<RecommendationCatalogEntry["source"]>, number> = {
   curated: 8,
+  marketplace: 7,
   native: 6,
   listed: 2
 };
@@ -33,7 +34,17 @@ const SCENARIO_KEYWORDS: Array<{ scenarioId: string; keywords: string[] }> = [
   { scenarioId: "ui-prototyping", keywords: ["ui", "界面", "原型", "prototype", "design"] },
   { scenarioId: "fullstack-prototyping", keywords: ["全栈", "mvp", "应用", "app builder", "full-stack"] },
   { scenarioId: "knowledge-qa", keywords: ["知识库", "问答", "文档", "qa", "knowledge", "docs", "rag"] },
-  { scenarioId: "multimodal-chat", keywords: ["多模态", "图片理解", "语音", "multimodal", "vision"] }
+  { scenarioId: "multimodal-chat", keywords: ["多模态", "图片理解", "语音", "multimodal", "vision"] },
+  { scenarioId: "legal-defense", keywords: ["刑事辩护", "刑辩", "辩护", "法律", "律师", "legal", "criminal-defense", "defense"] },
+  { scenarioId: "tax-planning", keywords: ["税务", "税筹", "节税", "申报", "tax", "tax-planning"] },
+  { scenarioId: "ip-patent", keywords: ["专利", "知识产权", "答审", "oa", "patent", "ip"] },
+  { scenarioId: "venture-dd", keywords: ["尽调", "投资", "红旗", "估值", "venture", "due diligence", "dd"] },
+  { scenarioId: "ecom-sourcing", keywords: ["电商", "选品", "亚马逊", "供应链", "ecommerce", "amazon", "sourcing"] },
+  { scenarioId: "content-ops", keywords: ["小红书", "选题", "投放", "mcn", "content ops", "xiaohongshu"] },
+  { scenarioId: "insurance-claim", keywords: ["保险", "理赔", "拒赔", "申诉", "insurance", "claim", "appeal"] },
+  { scenarioId: "construction-review", keywords: ["施工图", "审图", "消防", "结构", "construction", "building code"] },
+  { scenarioId: "exec-recruiting", keywords: ["猎头", "招聘", "候选人", "jd", "recruiting", "talent"] },
+  { scenarioId: "study-abroad", keywords: ["留学", "申请", "文书", "ps", "study abroad", "admission"] }
 ];
 
 const ACCESS_KEYWORDS: Array<{ accessType: RecommendationAccessType; keywords: string[] }> = [
@@ -256,7 +267,7 @@ function computeFitScore(rawScore: number): number {
 }
 
 function computeTrustScore(entry: RecommendationCatalogEntry): number {
-  let score = entry.source === "curated" ? 64 : entry.source === "native" ? 60 : 46;
+  let score = entry.source === "curated" ? 64 : entry.source === "native" ? 60 : entry.source === "marketplace" ? 56 : 46;
   if (entry.hasAuditEvidence) score += 18;
   if (entry.hasOnboardingGuide) score += 6;
   if (entry.riskLevel === "low") score += 8;
