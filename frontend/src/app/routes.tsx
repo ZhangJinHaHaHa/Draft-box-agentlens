@@ -15,6 +15,7 @@ import { AuditReportPage } from "@/pages/AuditReportPage";
 import { HomePage } from "@/pages/HomePage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { RecommendPage } from "@/pages/RecommendPage";
+import { PublishPage } from "@/pages/PublishPage";
 
 interface AppRoutesProps {
   config: AppConfig;
@@ -32,16 +33,6 @@ function LocaleRedirect(): JSX.Element {
 function ComparePagePlaceholder(): JSX.Element {
   const { t } = useTranslation("compare");
   return <PlaceholderPage title={t("page.title")} description={t("page.subtitle")} ctaHref="/agents" />;
-}
-
-function PublishPagePlaceholder(): JSX.Element {
-  return (
-    <PlaceholderPage
-      title="Publish"
-      description="Publishing tools land in Phase 3 alongside wallet integration. Routes are reserved so the URL won't move once they ship."
-      ctaHref="/agents"
-    />
-  );
 }
 
 function NotFoundPage(): JSX.Element {
@@ -70,7 +61,7 @@ export function AppRoutes({ config }: AppRoutesProps): JSX.Element {
           />
           <Route path="compare" element={<ComparePagePlaceholder />} />
           <Route path="recommend" element={<RecommendPage config={config} />} />
-          <Route path="publish" element={<PublishPagePlaceholder />} />
+          <Route path="publish" element={<PublishPage config={config} />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       ))}

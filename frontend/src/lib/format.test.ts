@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatTimestamp, truncateAddress, formatBondWei } from "./format";
+import { formatTimestamp, truncateAddress, formatBondWei, formatPriceEth } from "./format";
 
 describe("formatTimestamp", () => {
   it("formats a valid unix timestamp", () => {
@@ -52,5 +52,11 @@ describe("formatBondWei", () => {
 
   it("formats zero as wei", () => {
     expect(formatBondWei(0n)).toBe("0 wei");
+  });
+});
+
+describe("formatPriceEth", () => {
+  it("shows tiny values in wei instead of rounding to 0 ETH", () => {
+    expect(formatPriceEth(1n)).toBe("1 wei");
   });
 });

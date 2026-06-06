@@ -124,6 +124,11 @@ contract AgentMarketplace {
         return _accessRecords[tokenId].length;
     }
 
+    function getAccessRecord(uint256 tokenId, uint256 index) external view returns (AccessRecord memory) {
+        require(index < _accessRecords[tokenId].length, "INDEX_OUT_OF_BOUNDS");
+        return _accessRecords[tokenId][index];
+    }
+
     function _accessKey(uint256 tokenId, address user) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(tokenId, user));
     }

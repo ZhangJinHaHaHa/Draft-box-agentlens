@@ -19,6 +19,9 @@ export interface AppConfig {
   platformApiUrl?: string;
   attestation?: AttestationUiConfig;
   marketplaceAddress?: string;
+  reviewRegistryAddress?: string;
+  zkVerifierAddress?: string;
+  hostedAgentApiUrl?: string;
 }
 
 export type AppConfigResult =
@@ -45,6 +48,9 @@ export interface AppEnv {
   VITE_AUDIT_ATTESTATION_EXPECTED_QUOTE_FORMAT?: string;
   VITE_AUDIT_ATTESTATION_VERIFY_REPORT_DATA_BINDING?: string;
   VITE_AUDIT_MARKETPLACE_ADDRESS?: string;
+  VITE_AUDIT_REVIEW_REGISTRY_ADDRESS?: string;
+  VITE_AUDIT_ZK_VERIFIER_ADDRESS?: string;
+  VITE_HOSTED_AGENT_API_URL?: string;
 }
 
 export function readAppConfig(env: AppEnv): AppConfigResult {
@@ -102,6 +108,15 @@ export function readAppConfig(env: AppEnv): AppConfigResult {
       ...(attestation ? { attestation } : {}),
       ...(readOptionalEnvString(env.VITE_AUDIT_MARKETPLACE_ADDRESS)
         ? { marketplaceAddress: readOptionalEnvString(env.VITE_AUDIT_MARKETPLACE_ADDRESS) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_AUDIT_REVIEW_REGISTRY_ADDRESS)
+        ? { reviewRegistryAddress: readOptionalEnvString(env.VITE_AUDIT_REVIEW_REGISTRY_ADDRESS) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_AUDIT_ZK_VERIFIER_ADDRESS)
+        ? { zkVerifierAddress: readOptionalEnvString(env.VITE_AUDIT_ZK_VERIFIER_ADDRESS) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_HOSTED_AGENT_API_URL)
+        ? { hostedAgentApiUrl: readOptionalEnvString(env.VITE_HOSTED_AGENT_API_URL) }
         : {})
     }
   };
