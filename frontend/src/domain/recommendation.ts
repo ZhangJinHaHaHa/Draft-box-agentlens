@@ -13,7 +13,7 @@ import { computeTrustTier } from "./trustTier";
 export type PlatformRecommendationPriority = "low-risk" | "fast-start" | "self-host" | "api-first" | "audited";
 export type RecommendationUsageContext = "solo" | "team";
 export type GuidedRecommendationPriority = "safety" | "ease" | "capability" | "price";
-export type RecommendationPriority = PlatformRecommendationPriority | GuidedRecommendationPriority;
+export type RecommendationPriority = GuidedRecommendationPriority;
 
 export type RecommendationReasonCode =
   | "scenario-match"

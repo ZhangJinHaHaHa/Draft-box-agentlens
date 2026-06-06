@@ -16,6 +16,7 @@ import { HomePage } from "@/pages/HomePage";
 import { ComparePage } from "@/pages/ComparePage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { RecommendPage } from "@/pages/RecommendPage";
+import { PlatformRecommendPage } from "@/pages/PlatformRecommendPage";
 import { PublishPage } from "@/pages/PublishPage";
 
 interface AppRoutesProps {
@@ -57,6 +58,7 @@ export function AppRoutes({ config }: AppRoutesProps): JSX.Element {
           />
           <Route path="compare" element={<ComparePage config={config} />} />
           <Route path="recommend" element={<RecommendPage config={config} />} />
+          <Route path="platform-recommend" element={<PlatformRecommendPage config={config} />} />
           <Route path="publish" element={<PublishPage config={config} />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
