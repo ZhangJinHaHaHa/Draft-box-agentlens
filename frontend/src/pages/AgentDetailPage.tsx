@@ -9,6 +9,7 @@ import { ScenarioFitCard } from "@/components/decision/ScenarioFitCard";
 import { OnboardingGuideCard } from "@/components/onboarding/OnboardingGuideCard";
 import { NativeChainPanel } from "@/components/native/NativeChainPanel";
 import { PricingCard } from "@/components/native/PricingCard";
+import { RentalEntryCard } from "@/components/rental/RentalEntryCard";
 import { TrustEvidenceCard } from "@/components/trust/TrustEvidenceCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,6 +73,13 @@ export function AgentDetailPage({ config }: AgentDetailPageProps): JSX.Element {
         <OnboardingGuideCard entry={entry} />
 
         <TrustEvidenceCard entry={entry} />
+
+        <RentalEntryCard
+          entry={entry}
+          marketplaceConfigured={Boolean(config.marketplaceAddress)}
+          platformApiUrl={config.platformApiUrl}
+          web2RentalUrl={config.rentalWeb2Url}
+        />
 
         {isNativeEntry(entry) ? <NativeBlock entry={entry} config={config} /> : <CuratedBlock entry={entry} />}
       </div>

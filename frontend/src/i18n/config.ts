@@ -8,6 +8,7 @@ import zhAgents from "./locales/zh/agents.json";
 import zhDetail from "./locales/zh/detail.json";
 import zhCompare from "./locales/zh/compare.json";
 import zhRecommend from "./locales/zh/recommend.json";
+import zhPublish from "./locales/zh/publish.json";
 import zhReport from "./locales/zh/report.json";
 import zhTiers from "./locales/zh/tiers.json";
 import zhRisks from "./locales/zh/risks.json";
@@ -19,6 +20,7 @@ import enAgents from "./locales/en/agents.json";
 import enDetail from "./locales/en/detail.json";
 import enCompare from "./locales/en/compare.json";
 import enRecommend from "./locales/en/recommend.json";
+import enPublish from "./locales/en/publish.json";
 import enReport from "./locales/en/report.json";
 import enTiers from "./locales/en/tiers.json";
 import enRisks from "./locales/en/risks.json";
@@ -35,6 +37,7 @@ const NAMESPACES = [
   "detail",
   "compare",
   "recommend",
+  "publish",
   "report",
   "tiers",
   "risks",
@@ -56,6 +59,7 @@ if (!i18n.isInitialized) {
           detail: zhDetail,
           compare: zhCompare,
           recommend: zhRecommend,
+          publish: zhPublish,
           report: zhReport,
           tiers: zhTiers,
           risks: zhRisks,
@@ -68,6 +72,7 @@ if (!i18n.isInitialized) {
           detail: enDetail,
           compare: enCompare,
           recommend: enRecommend,
+          publish: enPublish,
           report: enReport,
           tiers: enTiers,
           risks: enRisks,

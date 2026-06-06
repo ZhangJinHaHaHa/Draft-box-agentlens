@@ -4,18 +4,30 @@ import type { I18nText } from "@/domain/i18nText";
 const map: Record<string, I18nText> = {
   "defi-trading": { zh: "DeFi 交易", en: "DeFi trading" },
   "customer-support": { zh: "客服自动化", en: "Customer support automation" },
-  "devops-sre": { zh: "DevOps 与 SRE", en: "DevOps & SRE" },
+  "devops-sre": { zh: "服务器运维", en: "Server ops" },
   "data-analysis": { zh: "数据分析", en: "Data analysis" },
-  "developer-assistant": { zh: "研发助手", en: "Developer assistant" },
+  "developer-assistant": { zh: "写代码助手", en: "Coding helper" },
   "workflow-automation": { zh: "流程自动化", en: "Workflow automation" },
-  "content-generation": { zh: "内容生成", en: "Content generation" },
+  "content-generation": { zh: "写文案做图", en: "Writing & images" },
   "market-research": { zh: "市场调研", en: "Market research" },
-  "ide-coding": { zh: "IDE 内编程", en: "In-IDE coding" },
-  "agentic-coding": { zh: "Agentic 自主编程", en: "Agentic coding" },
-  "ui-prototyping": { zh: "UI 原型生成", en: "UI prototyping" },
-  "fullstack-prototyping": { zh: "全栈原型搭建", en: "Full-stack prototyping" },
-  "knowledge-qa": { zh: "知识库问答", en: "Knowledge base Q&A" },
-  "multimodal-chat": { zh: "多模态对话", en: "Multimodal chat" }
+  "ide-coding": { zh: "在编辑器里写代码", en: "Coding in your editor" },
+  "agentic-coding": { zh: "AI 自动写代码", en: "AI writes code itself" },
+  "ui-prototyping": { zh: "做界面原型", en: "UI mockups" },
+  "fullstack-prototyping": { zh: "搭网站应用原型", en: "App prototypes" },
+  "knowledge-qa": { zh: "查资料问答", en: "Q&A over your docs" },
+  "multimodal-chat": { zh: "图文语音对话", en: "Text, image & voice chat" },
+  // Expert-seller (marketplace) professional domains — each backed by a
+  // seller's private accumulated context rather than a generic model.
+  "legal-defense": { zh: "刑事辩护", en: "Criminal defense" },
+  "tax-planning": { zh: "税务筹划", en: "Tax planning" },
+  "ip-patent": { zh: "专利与知产", en: "Patent & IP" },
+  "venture-dd": { zh: "投资尽调", en: "Investment due diligence" },
+  "ecom-sourcing": { zh: "电商选品", en: "E-commerce sourcing" },
+  "content-ops": { zh: "内容操盘", en: "Content operations" },
+  "insurance-claim": { zh: "保险理赔", en: "Insurance claims" },
+  "construction-review": { zh: "工程报建审图", en: "Construction plan review" },
+  "exec-recruiting": { zh: "高端猎头", en: "Executive recruiting" },
+  "study-abroad": { zh: "留学申请", en: "Study-abroad applications" }
 };
 
 export function scenario(id: keyof typeof map): ScenarioRef {

@@ -15,8 +15,14 @@ export interface AppConfig {
   chainId: number;
   reportGatewayUrl?: string;
   appealApiUrl?: string;
+  recommendationApiUrl?: string;
+  platformApiUrl?: string;
   attestation?: AttestationUiConfig;
   marketplaceAddress?: string;
+  reviewRegistryAddress?: string;
+  zkVerifierAddress?: string;
+  hostedAgentApiUrl?: string;
+  rentalWeb2Url?: string;
 }
 
 export type AppConfigResult =
@@ -36,11 +42,18 @@ export interface AppEnv {
   VITE_AUDIT_CHAIN_ID?: string;
   VITE_AUDIT_REPORT_GATEWAY_URL?: string;
   VITE_AUDIT_APPEAL_API_URL?: string;
+  VITE_PLATFORM_RECOMMENDATION_API_URL?: string;
+  VITE_PLATFORM_API_URL?: string;
   VITE_AUDIT_ATTESTATION_EXPECTED_PROVIDER_TYPE?: string;
   VITE_AUDIT_ATTESTATION_EXPECTED_MEASUREMENT?: string;
   VITE_AUDIT_ATTESTATION_EXPECTED_QUOTE_FORMAT?: string;
   VITE_AUDIT_ATTESTATION_VERIFY_REPORT_DATA_BINDING?: string;
   VITE_AUDIT_MARKETPLACE_ADDRESS?: string;
+  VITE_AUDIT_REVIEW_REGISTRY_ADDRESS?: string;
+  VITE_AUDIT_ZK_VERIFIER_ADDRESS?: string;
+  VITE_HOSTED_AGENT_API_URL?: string;
+  VITE_RECOMMENDATION_API_URL?: string;
+  VITE_RENTAL_WEB2_URL?: string;
 }
 
 export function readAppConfig(env: AppEnv): AppConfigResult {
@@ -76,6 +89,9 @@ export function readAppConfig(env: AppEnv): AppConfigResult {
       : rpcUrl;
 
   const attestation = readAttestationConfigFromEnv(env);
+  const recommendationApiUrl =
+    readOptionalEnvString(env.VITE_PLATFORM_RECOMMENDATION_API_URL) ??
+    readOptionalEnvString(env.VITE_RECOMMENDATION_API_URL);
 
   return {
     ok: true,
@@ -89,9 +105,27 @@ export function readAppConfig(env: AppEnv): AppConfigResult {
       ...(readOptionalEnvString(env.VITE_AUDIT_APPEAL_API_URL)
         ? { appealApiUrl: readOptionalEnvString(env.VITE_AUDIT_APPEAL_API_URL) }
         : {}),
+      ...(recommendationApiUrl
+        ? { recommendationApiUrl }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_PLATFORM_API_URL)
+        ? { platformApiUrl: readOptionalEnvString(env.VITE_PLATFORM_API_URL) }
+        : {}),
       ...(attestation ? { attestation } : {}),
       ...(readOptionalEnvString(env.VITE_AUDIT_MARKETPLACE_ADDRESS)
         ? { marketplaceAddress: readOptionalEnvString(env.VITE_AUDIT_MARKETPLACE_ADDRESS) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_AUDIT_REVIEW_REGISTRY_ADDRESS)
+        ? { reviewRegistryAddress: readOptionalEnvString(env.VITE_AUDIT_REVIEW_REGISTRY_ADDRESS) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_AUDIT_ZK_VERIFIER_ADDRESS)
+        ? { zkVerifierAddress: readOptionalEnvString(env.VITE_AUDIT_ZK_VERIFIER_ADDRESS) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_HOSTED_AGENT_API_URL)
+        ? { hostedAgentApiUrl: readOptionalEnvString(env.VITE_HOSTED_AGENT_API_URL) }
+        : {}),
+      ...(readOptionalEnvString(env.VITE_RENTAL_WEB2_URL)
+        ? { rentalWeb2Url: readOptionalEnvString(env.VITE_RENTAL_WEB2_URL) }
         : {})
     }
   };

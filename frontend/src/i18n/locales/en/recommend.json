@@ -1,7 +1,102 @@
 {
   "page": {
     "title": "Recommend",
-    "subtitle": "Tell us what you want to build and what you care about — we'll surface candidates.",
-    "comingSoon": "The recommend engine arrives in Phase 2. For now, head to the agents list and filter your way through."
+    "subtitle": "Tell us what you want to build and what you care about - we'll surface candidates."
+  },
+  "form": {
+    "label": "Your need",
+    "placeholder": "Example: I need a low-risk customer-support knowledge-base agent, ideally with an API and fast help-center setup.",
+    "title": "Need input",
+    "task": "Task",
+    "taskPlaceholder": "Example: I need a support agent that answers from our knowledge base with source citations",
+    "scenario": "Use case",
+    "noScenario": "No scenario",
+    "usageContext": "Usage",
+    "usage": {
+      "solo": "Solo trial",
+      "team": "Team adoption"
+    },
+    "access": "Preferred access",
+    "anyAccess": "Any",
+    "priority": "Priority",
+    "priorities": {
+      "ease": "Ease first",
+      "safety": "Safety first",
+      "capability": "Capability first",
+      "price": "Pricing clarity first"
+    },
+    "acceptsNative": "Accept platform-native agents",
+    "submit": "Generate recommendations",
+    "submitFree": "Generate free recommendations",
+    "submitPaid": "Use credits",
+    "submitting": "Generating...",
+    "modes": {
+      "free": "Free rules",
+      "paid": "Paid LLM"
+    }
+  },
+  "platform": {
+    "title": "Local Web2 account",
+    "cost": "{{count}} credits each",
+    "connect": "Mock Google",
+    "refresh": "Refresh account",
+    "connected": "Connected: {{email}}",
+    "disconnected": "Connect mock Google to spend platform credits.",
+    "balance": "{{count}} credits"
+  },
+  "results": {
+    "idle": "Enter a need to generate recommendations.",
+    "initial": "Fill in the need on the left to generate candidates.",
+    "empty": "No candidates matched yet. Try another scenario or loosen the constraints.",
+    "emptyHint": "Try another scenario, loosen access preferences, or use the agents list manually.",
+    "tooFew": "Only {{count}} candidates matched; this category may be underrepresented in the current catalog.",
+    "score": "Score {{score}}",
+    "why": "Why this",
+    "risk": "Risk",
+    "nextStep": "Next step",
+    "open": "Open",
+    "meta": {
+      "free": "Free rule recommendation",
+      "paid": "Paid LLM recommendation",
+      "charged": "Charged {{count}} credits",
+      "balanceAfter": "Balance {{count}}",
+      "fallback": "Rules fallback"
+    },
+    "selection": {
+      "fit": "Fit",
+      "trust": "Trust",
+      "risk": "Risk",
+      "confidence": "Confidence: {{value}}"
+    },
+    "confidence": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "recommendationType": {
+      "best_fit": "Best fit",
+      "trusted_pick": "Trusted pick",
+      "fast_start": "Fast start",
+      "specialized": "Specialized match"
+    },
+    "sources": {
+      "api": "API recommendation",
+      "local": "Local rule fallback",
+      "api-fallback": "API unavailable; using local rule fallback"
+    }
+  },
+  "reasonCodes": {
+    "scenario-match": "Scenario match",
+    "task-keyword": "Task keyword match",
+    "access-match": "Access match",
+    "low-risk": "Lower risk",
+    "easy-start": "Easy start",
+    "trust-evidence": "Trust evidence",
+    "rentable": "Platform rentable"
+  },
+  "errors": {
+    "generic": "Recommendation service is unavailable.",
+    "platformApiMissing": "VITE_PLATFORM_API_URL is missing, so paid recommendations are unavailable.",
+    "connectFirst": "Connect a mock Google account first."
   }
 }

@@ -5,6 +5,7 @@ import { AgentTypeChip } from "@/components/agent/AgentTypeChip";
 import { TrustTierBadge } from "@/components/trust/TrustTierBadge";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/i18n/useLocale";
+import { useCompareSelection } from "@/hooks/useCompareSelection";
 import { cn } from "@/lib/utils";
 import type { AgentCatalogEntry, RiskLevel } from "@/domain/catalog";
 import { isNativeEntry } from "@/domain/catalog";
@@ -25,11 +26,13 @@ export function AgentDetailHeader({ entry }: AgentDetailHeaderProps): JSX.Elemen
   const { locale } = useLocale();
   const { t } = useTranslation("detail");
   const { t: tc } = useTranslation("common");
+  const { ids, addId, removeId } = useCompareSelection();
+  const isCompared = ids.includes(entry.id);
   const tier = computeTrustTier({ entry });
   const native = isNativeEntry(entry);
 
   return (
-    <header className="sticky top-14 z-30 -mx-6 border-b border-border bg-background/90 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:-mx-8 sm:px-8">
+    <header className="glass-nav sticky top-14 z-30 -mx-6 border-b px-6 sm:-mx-8 sm:px-8">
       <div className="container-page flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -58,9 +61,14 @@ export function AgentDetailHeader({ entry }: AgentDetailHeaderProps): JSX.Elemen
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="secondary" disabled aria-disabled title="Phase 2">
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            {t("header.addToCompare")}
+          <Button
+            size="sm"
+            variant={isCompared ? "outline" : "secondary"}
+            onClick={(e) => { e.preventDefault(); isCompared ? removeId(entry.id) : addId(entry.id); }}
+            disabled={!isCompared && ids.length >= 4}
+          >
+            <Plus className={cn("h-3.5 w-3.5", isCompared && "rotate-45")} aria-hidden />
+            {isCompared ? t("header.addedToCompare") : t("header.addToCompare")}
           </Button>
           {entry.officialUrl ? (
             <Button size="sm" asChild>

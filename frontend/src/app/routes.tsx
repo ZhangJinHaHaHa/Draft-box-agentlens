@@ -13,7 +13,11 @@ import { AgentDetailPage } from "@/pages/AgentDetailPage";
 import { AgentListPage } from "@/pages/AgentListPage";
 import { AuditReportPage } from "@/pages/AuditReportPage";
 import { HomePage } from "@/pages/HomePage";
+import { ComparePage } from "@/pages/ComparePage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
+import { RecommendPage } from "@/pages/RecommendPage";
+import { PlatformRecommendPage } from "@/pages/PlatformRecommendPage";
+import { PublishPage } from "@/pages/PublishPage";
 
 interface AppRoutesProps {
   config: AppConfig;
@@ -26,26 +30,6 @@ function LocaleRedirect(): JSX.Element {
     ? segments.join("/")
     : `${DEFAULT_LOCALE}${location.pathname === "/" ? "" : location.pathname}`;
   return <Navigate to={`/${target}${location.search}${location.hash}`} replace />;
-}
-
-function ComparePagePlaceholder(): JSX.Element {
-  const { t } = useTranslation("compare");
-  return <PlaceholderPage title={t("page.title")} description={t("page.subtitle")} ctaHref="/agents" />;
-}
-
-function RecommendPagePlaceholder(): JSX.Element {
-  const { t } = useTranslation("recommend");
-  return <PlaceholderPage title={t("page.title")} description={t("page.comingSoon")} ctaHref="/agents" />;
-}
-
-function PublishPagePlaceholder(): JSX.Element {
-  return (
-    <PlaceholderPage
-      title="Publish"
-      description="Publishing tools land in Phase 3 alongside wallet integration. Routes are reserved so the URL won't move once they ship."
-      ctaHref="/agents"
-    />
-  );
 }
 
 function NotFoundPage(): JSX.Element {
@@ -72,9 +56,10 @@ export function AppRoutes({ config }: AppRoutesProps): JSX.Element {
             path="agent/:id/audits/:auditId/:auditIndex"
             element={<AuditReportPage config={config} />}
           />
-          <Route path="compare" element={<ComparePagePlaceholder />} />
-          <Route path="recommend" element={<RecommendPagePlaceholder />} />
-          <Route path="publish" element={<PublishPagePlaceholder />} />
+          <Route path="compare" element={<ComparePage config={config} />} />
+          <Route path="recommend" element={<RecommendPage config={config} />} />
+          <Route path="platform-recommend" element={<PlatformRecommendPage config={config} />} />
+          <Route path="publish" element={<PublishPage config={config} />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       ))}
