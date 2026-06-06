@@ -1,5 +1,5 @@
 import type { AgentCatalogEntry, Complexity, RiskLevel } from "./catalog";
-import { hasAuditEvidence, isRentable } from "./catalog";
+import { getRuntimeSecurity, hasAuditEvidence, isRentable } from "./catalog";
 import { computeTrustTier } from "./trustTier";
 
 export type CompareConclusion =
@@ -15,6 +15,7 @@ export type CompareAttributeKey =
   | "complexity"
   | "riskLevel"
   | "trustTier"
+  | "runtimeSecurity"
   | "onboarding"
   | "auditEvidence"
   | "pricing"
@@ -119,6 +120,7 @@ export function getCompareAttributeDiffs(
     complexity: valuesDiffer(agents.map((entry) => entry.complexity)),
     riskLevel: valuesDiffer(agents.map((entry) => entry.riskLevel)),
     trustTier: valuesDiffer(agents.map((entry) => String(computeTrustTier({ entry }).tier))),
+    runtimeSecurity: valuesDiffer(agents.map((entry) => getRuntimeSecurity(entry).kind)),
     onboarding: valuesDiffer(agents.map((entry) => String(entry.hasOnboardingGuide))),
     auditEvidence: valuesDiffer(agents.map((entry) => String(hasAuditEvidence(entry)))),
     pricing: valuesDiffer(

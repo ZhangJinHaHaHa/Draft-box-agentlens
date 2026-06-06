@@ -8,6 +8,14 @@
   "narrative": {
     "title": "How to choose, in plain words"
   },
+  "runtimeSecurity": {
+    "notice": {
+      "title": "Image recognition note",
+      "platformImage": "A recognized platform image is not a platform safety guarantee; it only means the platform recognizes a Docker image it can run in a controlled cloud runtime.",
+      "sellerHosted": "An unrecognized image means the runtime boundary is outside the platform-controlled cloud environment, so buyer input may be exposed to the seller runtime.",
+      "buyerChoice": "The platform only shows the runtime-boundary signal; buyers decide whether the material is sensitive enough to require it."
+    }
+  },
   "page": {
     "title": "Compare Agents",
     "subtitle": "Select the best Agent based on multiple metrics",
@@ -31,6 +39,7 @@
       "complexity": "Complexity",
       "riskLevel": "Risk Level",
       "trustTier": "Trust Tier",
+      "runtimeSecurity": "Runtime Security Boundary",
       "onboarding": "Onboarding Guide",
       "auditEvidence": "Audit Evidence",
       "pricing": "Pricing",

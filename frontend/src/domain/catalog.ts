@@ -57,6 +57,16 @@ export interface AgentNativePricing {
   rentable?: boolean;
 }
 
+export type AgentRuntimeSecurityKind = "platform_image" | "seller_hosted" | "external_tool";
+
+export interface AgentRuntimeSecurity {
+  kind: AgentRuntimeSecurityKind;
+  label: I18nText;
+  description: I18nText;
+  /** Short factual evidence label, e.g. "image recognized". */
+  evidenceLabel?: I18nText;
+}
+
 export interface AgentCatalogEntry {
   /** Stable string id. For native agents this matches `tokenId`. */
   id: string;
@@ -96,6 +106,8 @@ export interface AgentCatalogEntry {
   nativePricing?: AgentNativePricing;
   /** Optional editorial tagline shown above the intro on the detail page. */
   tagline?: I18nText;
+  /** Buyer-visible runtime boundary signal. This is not a platform security endorsement. */
+  runtimeSecurity?: AgentRuntimeSecurity;
 }
 
 interface MergeOptions {
@@ -212,6 +224,41 @@ export function mergeCatalog({ curated, listed, native, marketplace = [] }: Merg
 
 export function isNativeEntry(entry: AgentCatalogEntry): boolean {
   return entry.source === "native" || Boolean(entry.tokenId);
+}
+
+const PLATFORM_IMAGE_RUNTIME_SECURITY: AgentRuntimeSecurity = {
+  kind: "platform_image",
+  label: { zh: "平台镜像已识别", en: "Platform image recognized" },
+  description: {
+    zh: "卖家已提交 Docker 镜像，平台可在云端受控运行。",
+    en: "The seller submitted a Docker image, so the platform can run it in a controlled cloud runtime."
+  },
+  evidenceLabel: { zh: "镜像已识别", en: "Image recognized" }
+};
+
+const SELLER_HOSTED_RUNTIME_SECURITY: AgentRuntimeSecurity = {
+  kind: "seller_hosted",
+  label: { zh: "未识别镜像", en: "Image not recognized" },
+  description: {
+    zh: "平台未识别到 Docker 镜像，买家输入可能暴露给卖家运行环境。",
+    en: "The platform has not recognized a Docker image, so buyer input may be exposed to the seller runtime."
+  }
+};
+
+const EXTERNAL_TOOL_RUNTIME_SECURITY: AgentRuntimeSecurity = {
+  kind: "external_tool",
+  label: { zh: "外部工具 / 不适用", en: "External tool / N/A" },
+  description: {
+    zh: "这是平台目录中的外部工具，平台不判断其 Docker 镜像运行边界。",
+    en: "This is an external tool in the directory, so the platform does not judge its Docker image runtime boundary."
+  }
+};
+
+export function getRuntimeSecurity(entry: AgentCatalogEntry): AgentRuntimeSecurity {
+  if (entry.runtimeSecurity) return entry.runtimeSecurity;
+  if (isNativeEntry(entry)) return PLATFORM_IMAGE_RUNTIME_SECURITY;
+  if (entry.source === "marketplace") return SELLER_HOSTED_RUNTIME_SECURITY;
+  return EXTERNAL_TOOL_RUNTIME_SECURITY;
 }
 
 export function hasAuditEvidence(entry: AgentCatalogEntry): boolean {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { computeTrustTier } from "@/domain/trustTier";
-import { isNativeEntry } from "@/domain/catalog";
+import { getRuntimeSecurity, isNativeEntry } from "@/domain/catalog";
 import { marketplaceAgents } from "./marketplace";
 
 describe("marketplace expert agents", () => {
@@ -84,5 +84,18 @@ describe("marketplace expert agents", () => {
     // Observation-backed sellers reach Tier 1; un-observed ones sit at Tier 0.
     expect(tiers).toContain(1);
     expect(tiers).toContain(0);
+  });
+
+  it("marks demo marketplace agents with buyer-visible runtime security status", () => {
+    const byId = new Map(marketplaceAgents.map((entry) => [entry.id, entry]));
+    const criminalDefense = byId.get("expert-criminal-defense");
+    const insuranceClaim = byId.get("expert-insurance-claim");
+
+    expect(criminalDefense).toBeDefined();
+    expect(insuranceClaim).toBeDefined();
+    expect(getRuntimeSecurity(criminalDefense!).kind).toBe("platform_image");
+    expect(getRuntimeSecurity(criminalDefense!).label.zh).toBe("平台镜像已识别");
+    expect(getRuntimeSecurity(insuranceClaim!).kind).toBe("seller_hosted");
+    expect(getRuntimeSecurity(insuranceClaim!).label.zh).toBe("未识别镜像");
   });
 });

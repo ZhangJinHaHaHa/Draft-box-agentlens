@@ -61,6 +61,15 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     accessTypes: ["saas"],
     complexity: "medium",
     hasOnboardingGuide: false,
+    runtimeSecurity: {
+      kind: "platform_image",
+      label: { zh: "平台镜像已识别", en: "Platform image recognized" },
+      description: {
+        zh: "卖家已提交 Docker 镜像，平台可在云端受控运行。",
+        en: "The seller submitted a Docker image, so the platform can run it in a controlled cloud runtime."
+      },
+      evidenceLabel: { zh: "镜像已识别", en: "Image recognized" }
+    },
     pricingHint: {
       zh: "¥299 / 次案情分析 · 按次付费，可租用",
       en: "¥299 per case analysis, pay-as-you-go, rentable"
@@ -325,6 +334,14 @@ export const marketplaceAgents: AgentCatalogEntry[] = [
     accessTypes: ["saas"],
     complexity: "medium",
     hasOnboardingGuide: false,
+    runtimeSecurity: {
+      kind: "seller_hosted",
+      label: { zh: "未识别镜像", en: "Image not recognized" },
+      description: {
+        zh: "平台未识别到 Docker 镜像，买家输入可能暴露给卖家运行环境。",
+        en: "The platform has not recognized a Docker image, so buyer input may be exposed to the seller runtime."
+      }
+    },
     pricingHint: {
       zh: "按成功追回金额 5% 收费，不成功不收费",
       en: "5% of recovered amount, no win no fee"

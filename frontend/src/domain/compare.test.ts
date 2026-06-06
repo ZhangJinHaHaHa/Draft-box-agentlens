@@ -111,4 +111,31 @@ describe("compareAgents", () => {
     expect(differences.trustTier).toBe(false);
     expect(differences.seller).toBe(true);
   });
+
+  it("identifies runtime security differences across same-category marketplace agents", () => {
+    const differences = getCompareAttributeDiffs([
+      entry({
+        id: "platform-image",
+        source: "marketplace",
+        category: "Legal expert agent",
+        runtimeSecurity: {
+          kind: "platform_image",
+          label: { zh: "平台镜像已识别", en: "Platform image recognized" },
+          description: { zh: "平台可在云端受控运行。", en: "The platform can run it in a controlled cloud runtime." }
+        }
+      }),
+      entry({
+        id: "seller-hosted",
+        source: "marketplace",
+        category: "Legal expert agent",
+        runtimeSecurity: {
+          kind: "seller_hosted",
+          label: { zh: "未识别镜像", en: "Image not recognized" },
+          description: { zh: "买家输入可能暴露给卖家运行环境。", en: "Buyer input may be exposed to the seller runtime." }
+        }
+      })
+    ]);
+
+    expect(differences.runtimeSecurity).toBe(true);
+  });
 });

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Check, X, ShieldAlert, ShieldCheck, CheckCircle2, Trash2 } from "lucide-react";
+import { Check, X, ShieldAlert, ShieldCheck, CheckCircle2, Server, Trash2 } from "lucide-react";
 
 import { PageHeading } from "@/components/layout/PageHeading";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { useCatalog } from "@/hooks/useCatalog";
 import type { AppConfig } from "@/config/appConfig";
 import { compareAgents, getCompareAttributeDiffs, type CompareAttributeKey } from "@/domain/compare";
 import { buildCompareNarrative } from "@/domain/compareNarrative";
-import { hasAuditEvidence } from "@/domain/catalog";
+import { getRuntimeSecurity, hasAuditEvidence, type AgentCatalogEntry, type AgentRuntimeSecurityKind } from "@/domain/catalog";
 import { computeTrustTier } from "@/domain/trustTier";
 import { pickText } from "@/domain/i18nText";
 import { TrustTierBadge } from "@/components/trust/TrustTierBadge";
@@ -76,6 +76,18 @@ export function ComparePage({ config }: { config: AppConfig }): JSX.Element {
           {t("page.limit")}
         </div>
       ) : null}
+
+      <div className="surface-card mb-6 border-warning/30 bg-warning/5 px-5 py-4">
+        <h2 className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+          <ShieldAlert className="h-4 w-4 text-warning" aria-hidden />
+          {t("runtimeSecurity.notice.title")}
+        </h2>
+        <ul className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground md:grid-cols-3">
+          <li>{t("runtimeSecurity.notice.platformImage")}</li>
+          <li>{t("runtimeSecurity.notice.sellerHosted")}</li>
+          <li>{t("runtimeSecurity.notice.buyerChoice")}</li>
+        </ul>
+      </div>
 
       {/* Conclusion Banner */}
       <div className={cn(
@@ -160,6 +172,14 @@ export function ComparePage({ config }: { config: AppConfig }): JSX.Element {
               {agents.map((agent) => (
                 <td key={agent.id} className={tdClass("trustTier")}>
                   <TrustTierBadge result={computeTrustTier({ entry: agent })} />
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="bg-card/35 p-4 font-medium text-muted-foreground backdrop-blur">{t("page.attrs.runtimeSecurity")}</td>
+              {agents.map((agent) => (
+                <td key={agent.id} className={tdClass("runtimeSecurity")}>
+                  <RuntimeSecurityCell agent={agent} locale={locale} />
                 </td>
               ))}
             </tr>
@@ -269,4 +289,56 @@ export function ComparePage({ config }: { config: AppConfig }): JSX.Element {
       ) : null}
     </section>
   );
+}
+
+function RuntimeSecurityCell({
+  agent,
+  locale
+}: {
+  agent: AgentCatalogEntry;
+  locale: "zh" | "en";
+}): JSX.Element {
+  const status = getRuntimeSecurity(agent);
+  const tone = runtimeSecurityTone(status.kind);
+  const Icon = tone.Icon;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium", tone.badgeClass)}>
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+          {pickText(status.label, locale)}
+        </span>
+        {status.evidenceLabel ? (
+          <span className="rounded-md border border-border/70 bg-card/55 px-2 py-0.5 text-[11px] text-muted-foreground">
+            {pickText(status.evidenceLabel, locale)}
+          </span>
+        ) : null}
+      </div>
+      <p className="text-xs leading-relaxed text-muted-foreground">{pickText(status.description, locale)}</p>
+    </div>
+  );
+}
+
+function runtimeSecurityTone(kind: AgentRuntimeSecurityKind): {
+  Icon: typeof ShieldCheck;
+  badgeClass: string;
+} {
+  switch (kind) {
+    case "platform_image":
+      return {
+        Icon: ShieldCheck,
+        badgeClass: "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300"
+      };
+    case "seller_hosted":
+      return {
+        Icon: ShieldAlert,
+        badgeClass: "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+      };
+    case "external_tool":
+      return {
+        Icon: Server,
+        badgeClass: "border-border bg-secondary/50 text-muted-foreground"
+      };
+  }
 }
