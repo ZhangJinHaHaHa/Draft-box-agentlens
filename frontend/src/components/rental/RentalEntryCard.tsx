@@ -383,9 +383,11 @@ export function RentalEntryCard({
             <p className="text-sm text-foreground">{t("rental.web3.price", { price: priceLabel })}</p>
           ) : null}
           <p className="text-sm text-muted-foreground">
-            {marketplaceConfigured
-              ? t("rental.web3.marketplaceReadOnly")
-              : t("rental.web3.disabledReason")}
+            {native
+              ? t("rental.web3.nativeDirect")
+              : marketplaceConfigured
+                ? t("rental.web3.marketplaceReadOnly")
+                : t("rental.web3.disabledReason")}
           </p>
           <Button className="self-start" disabled size="sm" type="button">
             {t("rental.web3.action")}

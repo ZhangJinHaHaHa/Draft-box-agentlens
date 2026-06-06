@@ -49,7 +49,7 @@ describe("RentalEntryCard", () => {
     expect(screen.getByRole("button", { name: /Create local rental/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /On-chain rental/i })).toBeDisabled();
     expect(screen.getByText(/Platform API is not configured/i)).toBeInTheDocument();
-    expect(screen.getByText(/Wallet signing and on-chain grantRentalAccess are not connected yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/On-chain grants for Web2\/fiat orders still wait for the grantRentalAccess bridge/i)).toBeInTheDocument();
   });
 
   it("enables the Web2 application link when configured but keeps Web3 read-only", () => {
@@ -57,7 +57,7 @@ describe("RentalEntryCard", () => {
 
     expect(screen.getByRole("link", { name: /Open access form/i })).toHaveAttribute("href", "https://orders.example.com/apply");
     expect(screen.getByRole("button", { name: /On-chain rental/i })).toBeDisabled();
-    expect(screen.getByText(/Marketplace pricing can be displayed; real wallet signing/i)).toBeInTheDocument();
+    expect(screen.getByText(/Marketplace pricing can be displayed; on-chain grants for Web2\/fiat orders/i)).toBeInTheDocument();
   });
 
   it("creates a local Web2 rental and runs MVP-3 lifecycle actions through the Platform API", async () => {

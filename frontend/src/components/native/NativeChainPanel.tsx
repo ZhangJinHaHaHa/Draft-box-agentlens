@@ -315,8 +315,10 @@ function NativeChainPanelInner({
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {rentalRecords.map((record, idx) => (
-              <div key={`${record.buyer}-${idx}`} className="rounded-md border border-border p-4 text-sm">
-                <p className="font-mono text-xs text-muted-foreground">{truncateAddress(record.buyer)}</p>
+              <div key={`${record.expiresAt}-${record.amountPaid.toString()}-${idx}`} className="rounded-md border border-border p-4 text-sm">
+                <p className="font-mono text-xs text-muted-foreground">
+                  {t("nativeChain.anonymousRental", { index: idx + 1 })}
+                </p>
                 <p className="mt-1">{t("nativeChain.rental")}</p>
                 <p className="text-xs text-muted-foreground">
                   {t("nativeChain.paid", { amount: formatPriceEth(record.amountPaid) })}
