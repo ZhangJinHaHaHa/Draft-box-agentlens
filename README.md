@@ -34,17 +34,6 @@ AgentLens 面向 AI Agent 经济中的信任问题：在用户雇佣、试用或
 - ZK proof：通过 circom/snarkjs 证明审计分数和 Agent 指纹计算过程，而不暴露底层私有代码。
 - 可信交易市场：合约层支持 Agent 质押、租赁、购买、访问权检查、用户评论与动态信誉更新。
 
-## 产品演示路径
-
-推荐录制或验收时按下面路径走一遍：
-
-1. 打开 [首页](http://154.89.157.252:5173/zh)，用一句话说明 AgentLens 的定位：用证据而不是广告做 Agent 选型。
-2. 进入 [Agent 列表](http://154.89.157.252:5173/zh/agents)，展示搜索、场景、Agent 类型、接入方式、信任层级、风险等级、上手难度等筛选器。
-3. 点击一个重点维护 Agent，例如 Cursor、Claude Code 或 v0，展示决策摘要、适合谁、不适合谁、风险与缓解、起步指南和官方资源。
-4. 打开 [需求推荐](http://154.89.157.252:5173/zh/recommend)，输入类似“我需要一个低风险的客服知识库 Agent，最好有 API，能快速接入现有帮助中心”的需求，展示候选结果。
-5. 如果链上节点和原生 Agent 数据可用，进入 native Agent 详情页，展示链上 profile、审计历史、attestation hash、信誉评分和访问记录。
-6. 最后打开 [发布入口](http://154.89.157.252:5173/zh/publish)，说明开发者发布、审计和租赁闭环是下一阶段的平台原生能力。
-
 ## 架构
 
 ```mermaid
@@ -203,7 +192,3 @@ npm run validate:catalog
 - [验证方法](docs/verification-methods.md)
 - [本地开发 Runbook](docs/local-development-runbook.md)
 - [TEE 生产状态](docs/status/2026-04-16-tee-production.md)
-
-## 来源说明
-
-本 README 参考并裁剪了 [ZhangJinHaHaHa/AgentLens](https://github.com/ZhangJinHaHaHa/AgentLens) 的公开 README / README_CN 结构，保留适合当前成品的项目定位、架构、核心组件和快速启动说明，并移除了与本仓库当前状态不匹配的旧演示地址、个人介绍、商业授权和 CLA 段落。
