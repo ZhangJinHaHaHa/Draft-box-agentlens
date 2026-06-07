@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/popo-mascot.png" alt="Popo - AgentLens mascot" width="180" />
+<img src="frontend/public/agentlens-logo.png" alt="AgentLens logo" width="180" />
 
 # AgentLens
 
