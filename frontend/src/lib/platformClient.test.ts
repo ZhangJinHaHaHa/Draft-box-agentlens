@@ -12,6 +12,7 @@ import {
   getPlatformOrder,
   getPlatformSettlement,
   linkPlatformAgentDeveloper,
+  invokePlatformAgent,
   migrateWallet,
   resolvePlatformRefund,
   requestWalletExport,
@@ -95,6 +96,43 @@ describe("platformClient", () => {
     expect(response.charged).toBe(true);
     expect(response.creditAccount.balance).toBe(97);
     expect(response.recommendation.results[0].agentId).toBe("dify");
+  });
+
+  it("invokes a rented platform Agent through the Gateway lease", async () => {
+    const response = await invokePlatformAgent(
+      "https://platform.example",
+      {
+        agentId: "expert-criminal-defense",
+        orderId: "order-1",
+        gatewayLeaseToken: "gateway-lease-1",
+        message: "请梳理辩点",
+        locale: "zh"
+      },
+      async (url, init) => {
+        expect(url).toBe("https://platform.example/api/agent-chat");
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toMatchObject({
+          agentId: "expert-criminal-defense",
+          orderId: "order-1",
+          gatewayLeaseToken: "gateway-lease-1",
+          message: "请梳理辩点",
+          locale: "zh"
+        });
+        return new Response(
+          JSON.stringify({
+            agentId: "expert-criminal-defense",
+            answer: "可先核查证据链和程序瑕疵。",
+            engine: "openai",
+            model: "gpt-5.5",
+            safetyNotice: "辅助分析，不构成正式法律意见。"
+          }),
+          { status: 200 }
+        );
+      }
+    );
+
+    expect(response.answer).toContain("证据链");
+    expect(response.model).toBe("gpt-5.5");
   });
 
   it("times out a stuck paid LLM recommendation request", async () => {

@@ -6,9 +6,106 @@ import {
   createHostedAgentLease,
   getHostedAgentGatewaySummary,
   invokeHostedAgent,
+  listHostedAgents,
   submitHostedAgentDraft,
   submitHostedAgentForReview
 } from "./hostedAgentClient";
+
+describe("listHostedAgents", () => {
+  it("loads hosted Agent drafts and keeps review evidence", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              hostedAgentId: "hst-001",
+              status: "approved",
+              createdAt: "2026-06-06T10:00:00.000Z",
+              updatedAt: "2026-06-06T10:04:00.000Z",
+              developerAddress: "0x3333333333333333333333333333333333333333",
+              readme: {
+                agentName: "research-agent",
+                displayName: "Research Agent",
+                summary: "Research assistant.",
+                useCases: ["market research"],
+                capabilities: ["summaries"],
+                limitations: ["No investment advice."],
+                integrationType: "API",
+                docsUrl: "https://docs.example.com"
+              },
+              integration: {
+                endpointUrl: "https://api.example.com/agent",
+                schemaUrl: "https://api.example.com/openapi.json",
+                healthcheckUrl: "https://api.example.com/health",
+                authMethod: "Platform-held API key"
+              },
+              review: {
+                reviewKind: "hosted-api-black-box",
+                submittedAt: "2026-06-06T10:02:00.000Z",
+                fingerprint: {
+                  algorithm: "sha256",
+                  scope: "hosted-api",
+                  value: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  createdAt: "2026-06-06T10:02:00.000Z",
+                  subject: {
+                    agentName: "research-agent",
+                    endpointHost: "api.example.com",
+                    schemaHost: "api.example.com",
+                    developerAddress: "0x3333333333333333333333333333333333333333"
+                  }
+                },
+                healthcheck: {
+                  status: "passed",
+                  checkedAt: "2026-06-06T10:02:00.000Z",
+                  httpStatus: 200,
+                  latencyMs: 35
+                },
+                notes: ["Healthcheck passed."]
+              },
+              approval: {
+                approvedAt: "2026-06-06T10:04:00.000Z",
+                reviewer: "local-admin"
+              }
+            }
+          ]
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        }
+      )
+    );
+
+    const result = await listHostedAgents({
+      endpointUrl: "https://api.example.com/hosted-agents",
+      fetchImpl
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith("https://api.example.com/hosted-agents", {
+      method: "GET"
+    });
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.items[0]?.hostedAgentId : undefined).toBe("hst-001");
+    expect(result.ok ? result.items[0]?.review?.healthcheck.status : undefined).toBe("passed");
+  });
+
+  it("returns list API errors", async () => {
+    const result = await listHostedAgents({
+      endpointUrl: "https://api.example.com/hosted-agents",
+      fetchImpl: vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "Hosted API unavailable." }), {
+          status: 503,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Hosted API unavailable."
+    });
+  });
+});
 
 describe("submitHostedAgentDraft", () => {
   it("posts hosted Agent draft payloads", async () => {

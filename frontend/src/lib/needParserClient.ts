@@ -8,6 +8,9 @@ export interface NeedParserClientInput {
   query: string;
   locale: "zh" | "en";
   taxonomy: NeedParserTaxonomy;
+  apiBaseUrl?: string;
+  timeoutMs?: number;
+  fetchImpl?: typeof fetch;
 }
 
 export type NeedParserClientResult =
@@ -20,24 +23,40 @@ export type NeedParserClientResult =
       error: string;
     };
 
+const NEED_PARSER_TIMEOUT_MS = 10_000;
+
 export async function parseNeedWithLlm(input: NeedParserClientInput): Promise<NeedParserClientResult> {
+  const apiBaseUrl = input.apiBaseUrl?.replace(/\/+$/, "");
+  if (!apiBaseUrl) {
+    return {
+      ok: true,
+      result: parseNeedLocally(input)
+    };
+  }
+
+  const timeoutMs = input.timeoutMs ?? NEED_PARSER_TIMEOUT_MS;
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const controller = timeoutMs > 0 ? new AbortController() : undefined;
+  const timeout = controller
+    ? globalThis.setTimeout(() => controller.abort(), timeoutMs)
+    : undefined;
+
   try {
-    const response = await fetch("/api/llm/parse-need", {
+    const response = await fetchImpl(`${apiBaseUrl}/api/llm/parse-need`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input)
+      ...(controller ? { signal: controller.signal } : {}),
+      body: JSON.stringify({
+        query: input.query,
+        locale: input.locale,
+        taxonomy: input.taxonomy
+      })
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok || body?.ok !== true) {
-      if (typeof body?.error === "string" && body.error.includes("MiniMax API key is not configured")) {
-        return {
-          ok: true,
-          result: parseNeedLocally(input)
-        };
-      }
       return {
-        ok: false,
-        error: typeof body?.error === "string" ? body.error : "LLM need parser is unavailable."
+        ok: true,
+        result: parseNeedLocally(input)
       };
     }
 
@@ -47,9 +66,13 @@ export async function parseNeedWithLlm(input: NeedParserClientInput): Promise<Ne
     };
   } catch (error) {
     return {
-      ok: false,
-      error: error instanceof Error ? error.message : "LLM need parser is unavailable."
+      ok: true,
+      result: parseNeedLocally(input)
     };
+  } finally {
+    if (timeout !== undefined) {
+      globalThis.clearTimeout(timeout);
+    }
   }
 }
 

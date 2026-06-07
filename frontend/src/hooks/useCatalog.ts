@@ -7,6 +7,7 @@ import type { AgentCatalogEntry, MergedCatalog } from "@/domain/catalog";
 import { mergeCatalog } from "@/domain/catalog";
 import type { AppConfig } from "@/config/appConfig";
 
+import { useHostedCatalogAgents, type HostedCatalogStatus } from "./useHostedCatalogAgents";
 import { useNativeAgents, type NativeAgentsStatus } from "./useNativeAgents";
 
 interface UseCatalogOptions {
@@ -20,11 +21,14 @@ interface UseCatalogOptions {
 export interface UseCatalogResult extends MergedCatalog {
   nativeStatus: NativeAgentsStatus;
   nativeError: string | null;
+  hostedStatus: HostedCatalogStatus;
+  hostedError: string | null;
 }
 
 const NOOP_NATIVE_CLIENT = createNoopClient();
 
 export function useCatalog({ config, nativeAgents, skipNative }: UseCatalogOptions): UseCatalogResult {
+  const hosted = useHostedCatalogAgents(config);
   const native = useNativeAgents({
     config,
     client: skipNative ? NOOP_NATIVE_CLIENT : undefined
@@ -32,18 +36,21 @@ export function useCatalog({ config, nativeAgents, skipNative }: UseCatalogOptio
 
   const merged = useMemo(() => {
     const sourceNative = nativeAgents ?? (skipNative ? [] : native.agents);
+    const marketplace = [...hosted.agents, ...marketplaceAgents];
     return mergeCatalog({
       curated: curatedAgents,
       listed: listedAgents,
-      marketplace: marketplaceAgents,
+      marketplace,
       native: sourceNative
     });
-  }, [native.agents, nativeAgents, skipNative]);
+  }, [hosted.agents, native.agents, nativeAgents, skipNative]);
 
   return {
     ...merged,
     nativeStatus: skipNative ? "idle" : native.status,
-    nativeError: native.errorMessage
+    nativeError: native.errorMessage,
+    hostedStatus: hosted.status,
+    hostedError: hosted.errorMessage
   };
 }
 

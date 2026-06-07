@@ -40,7 +40,7 @@ export function AgentListPage({ config }: AgentListPageProps): JSX.Element {
   const [semanticParseError, setSemanticParseError] = useState("");
   const lastSemanticQueryRef = useRef("");
 
-  const { entries, nativeStatus } = useCatalog({ config });
+  const { entries, nativeStatus, hostedStatus } = useCatalog({ config });
   const facets = useMemo(() => buildCatalogFacets(entries), [entries]);
   const taxonomy = useMemo(() => buildNeedParserTaxonomy(entries), [entries]);
   const filtered = useMemo(
@@ -77,7 +77,7 @@ export function AgentListPage({ config }: AgentListPageProps): JSX.Element {
     const timer = window.setTimeout(() => {
       if (lastSemanticQueryRef.current === query) return;
       lastSemanticQueryRef.current = query;
-      void parseNeedWithLlm({ query, locale, taxonomy }).then((parsed) => {
+      void parseNeedWithLlm({ query, locale, taxonomy, apiBaseUrl: config.platformApiUrl }).then((parsed) => {
         if (cancelled) return;
         if (parsed.ok) {
           setSemanticParseError("");
@@ -98,7 +98,7 @@ export function AgentListPage({ config }: AgentListPageProps): JSX.Element {
     setFilters(next);
   }, []);
 
-  const isLoadingNative = nativeStatus === "loading" && entries.length === 0;
+  const isLoadingCatalog = (nativeStatus === "loading" || hostedStatus === "loading") && entries.length === 0;
 
   return (
     <section className="container-page py-12">
@@ -119,7 +119,7 @@ export function AgentListPage({ config }: AgentListPageProps): JSX.Element {
           </Card>
         ) : null}
         <SearchFilterBar filters={filters} facets={facets} onChange={handleChange} resultCount={filtered.length} />
-        {isLoadingNative ? (
+        {isLoadingCatalog ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, idx) => (
               <Skeleton key={idx} className="h-44" />

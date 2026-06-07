@@ -10,7 +10,8 @@ test("readPlatformApiConfig returns local defaults", () => {
     port: 8790,
     stateDir: join(process.cwd(), ".runtime", "platform-api"),
     recommendationCostCredits: 3,
-    recommendationLlm: { provider: "mock" }
+    recommendationLlm: { provider: "mock" },
+    agentChatLlm: { provider: "mock" }
   });
 });
 
@@ -25,7 +26,12 @@ test("readPlatformApiConfig reads persistence and LLM overrides", () => {
       PLATFORM_RECOMMENDATION_LLM_API_KEY: "sk-test",
       PLATFORM_RECOMMENDATION_LLM_MODEL: "test-model",
       PLATFORM_RECOMMENDATION_LLM_API_BASE_URL: "https://llm.example/v1",
-      PLATFORM_RECOMMENDATION_LLM_TIMEOUT_MS: "8000"
+      PLATFORM_RECOMMENDATION_LLM_TIMEOUT_MS: "8000",
+      PLATFORM_AGENT_LLM_PROVIDER: "openai",
+      PLATFORM_AGENT_LLM_API_KEY: "sk-agent",
+      PLATFORM_AGENT_LLM_MODEL: "gpt-5.5",
+      PLATFORM_AGENT_LLM_API_BASE_URL: "https://agent.example",
+      PLATFORM_AGENT_LLM_TIMEOUT_MS: "9000"
     }),
     {
       host: "0.0.0.0",
@@ -38,6 +44,13 @@ test("readPlatformApiConfig reads persistence and LLM overrides", () => {
         model: "test-model",
         apiBaseUrl: "https://llm.example/v1",
         timeoutMs: 8000
+      },
+      agentChatLlm: {
+        provider: "openai",
+        apiKey: "sk-agent",
+        model: "gpt-5.5",
+        apiBaseUrl: "https://agent.example",
+        timeoutMs: 9000
       }
     }
   );
@@ -51,5 +64,20 @@ test("readPlatformApiConfig defaults OpenAI recommendation timeout", () => {
       PLATFORM_RECOMMENDATION_LLM_MODEL: "test-model"
     }).recommendationLlm.timeoutMs,
     30_000
+  );
+});
+
+test("readPlatformApiConfig defaults Agent chat model and timeout", () => {
+  assert.deepEqual(
+    readPlatformApiConfig({
+      PLATFORM_AGENT_LLM_PROVIDER: "openai",
+      PLATFORM_AGENT_LLM_API_KEY: "sk-agent"
+    }).agentChatLlm,
+    {
+      provider: "openai",
+      apiKey: "sk-agent",
+      model: "gpt-5.5",
+      timeoutMs: 45_000
+    }
   );
 });

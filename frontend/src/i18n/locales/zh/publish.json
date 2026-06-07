@@ -152,6 +152,7 @@
         "approving": "正在批准",
         "refresh": "刷新摘要",
         "refreshing": "正在刷新",
+        "openMarket": "打开市场详情",
         "configureSecret": "配置 Gateway Secret",
         "configuringSecret": "正在配置",
         "createLease": "创建测试租赁",

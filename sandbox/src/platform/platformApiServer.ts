@@ -4,7 +4,8 @@ import { loadRecommendationCatalog } from "../recommendation/loadRecommendationC
 import {
   createRecommendationLlmClient,
   type RecommendationEngine,
-  type RecommendationLlmClient
+  type RecommendationLlmClient,
+  type RecommendationLlmConfig
 } from "../recommendation/recommendationLlmClient";
 import { parseRecommendationRequest } from "../recommendation/recommendationApiServer";
 import { recommendFromCatalog } from "../recommendation/recommendationService";
@@ -13,6 +14,10 @@ import type {
   RecommendationPlatformSignals,
   RecommendationResponse
 } from "../recommendation/recommendationTypes";
+import {
+  createPlatformAgentChatClient,
+  type PlatformAgentChatClient
+} from "./agentChatClient";
 import type { DeveloperTrustStatus } from "./developerProfile";
 import type { PlatformOrderCurrency } from "./orderState";
 import {
@@ -22,6 +27,10 @@ import {
 } from "./platformApiStore";
 import { createPersistentPlatformApiStore } from "./persistentPlatformApiStore";
 import type { PlatformApiConfig } from "./readPlatformApiConfig";
+import {
+  parseNeedParserRequest,
+  parseNeedWithConfiguredLlm
+} from "./needParserApi";
 import type { RefundIssueCategory } from "./refundPolicy";
 import {
   USAGE_REVIEW_DIMENSIONS,
@@ -55,7 +64,13 @@ const DEVELOPER_TRUST_STATUSES = ["unverified", "verified", "suspended"] as cons
 export interface PlatformApiRecommendationDependencies {
   catalog: readonly RecommendationCatalogEntry[];
   llmClient: RecommendationLlmClient;
+  llmConfig?: RecommendationLlmConfig;
+  needParserFetchImpl?: typeof fetch;
   costCredits: number;
+}
+
+export interface PlatformApiAgentChatDependencies {
+  chatClient: PlatformAgentChatClient;
 }
 
 export function createPlatformApiServer(config: PlatformApiConfig): Server {
@@ -63,11 +78,15 @@ export function createPlatformApiServer(config: PlatformApiConfig): Server {
   const recommendationDependencies: PlatformApiRecommendationDependencies = {
     catalog: loadRecommendationCatalog(config.recommendationCatalogPath),
     llmClient: createRecommendationLlmClient(config.recommendationLlm),
+    llmConfig: config.recommendationLlm,
     costCredits: config.recommendationCostCredits
+  };
+  const agentChatDependencies: PlatformApiAgentChatDependencies = {
+    chatClient: createPlatformAgentChatClient(config.agentChatLlm)
   };
 
   return createServer((request, response) =>
-    void handlePlatformApiRequest(request, response, store, recommendationDependencies)
+    void handlePlatformApiRequest(request, response, store, recommendationDependencies, agentChatDependencies)
   );
 }
 
@@ -75,7 +94,8 @@ export async function handlePlatformApiRequest(
   request: PlatformRequestLike,
   response: PlatformResponseLike,
   store: InMemoryPlatformApiStore,
-  recommendationDependencies?: PlatformApiRecommendationDependencies
+  recommendationDependencies?: PlatformApiRecommendationDependencies,
+  agentChatDependencies?: PlatformApiAgentChatDependencies
 ): Promise<void> {
   setCorsHeaders(response);
 
@@ -94,7 +114,9 @@ export async function handlePlatformApiRequest(
         status: "ok",
         ...store.snapshot(),
         recommendationCostCredits: recommendationDependencies?.costCredits ?? null,
-        recommendationEngine: recommendationDependencies?.llmClient.engine ?? null
+        recommendationEngine: recommendationDependencies?.llmClient.engine ?? null,
+        agentChatEngine: agentChatDependencies?.chatClient.engine ?? null,
+        agentChatModel: agentChatDependencies?.chatClient.model ?? null
       });
       return;
     }
@@ -205,6 +227,18 @@ export async function handlePlatformApiRequest(
       return;
     }
 
+    if (request.method === "POST" && url.pathname === "/api/llm/parse-need") {
+      const payload = await readJsonObject(request);
+      const needRequest = parseNeedParserRequest(payload);
+      const result = await parseNeedWithConfiguredLlm(
+        needRequest,
+        recommendationDependencies?.llmConfig ?? { provider: "mock" },
+        recommendationDependencies?.needParserFetchImpl
+      );
+      writeJson(response, 200, { ok: true, result });
+      return;
+    }
+
     if (request.method === "POST" && url.pathname === "/api/recommendations/llm") {
       if (!recommendationDependencies) {
         throw new PlatformApiError(500, "Recommendation dependencies are not configured.");
@@ -218,6 +252,31 @@ export async function handlePlatformApiRequest(
         payload
       );
       writeJson(response, 200, recommendation);
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/agent-chat") {
+      if (!agentChatDependencies) {
+        throw new PlatformApiError(500, "Agent chat dependencies are not configured.");
+      }
+      const payload = await readJsonObject(request);
+      const agentId = readRequiredString(payload, "agentId");
+      const orderId = readRequiredString(payload, "orderId");
+      const gatewayLeaseToken = readRequiredString(payload, "gatewayLeaseToken");
+      const message = readRequiredString(payload, "message");
+      const locale = readOptionalLocale(payload, "locale") ?? "zh";
+      assertActiveGatewayLease(store, {
+        agentId,
+        orderId,
+        gatewayLeaseToken
+      });
+      writeJson(response, 200, await agentChatDependencies.chatClient.invoke({
+        agentId,
+        orderId,
+        gatewayLeaseToken,
+        message,
+        locale
+      }));
       return;
     }
 
@@ -637,6 +696,26 @@ function formatRecommendationFallbackReason(error: unknown): string {
   return "Recommendation LLM failed.";
 }
 
+function assertActiveGatewayLease(
+  store: InMemoryPlatformApiStore,
+  input: {
+    agentId: string;
+    orderId: string;
+    gatewayLeaseToken: string;
+  }
+): void {
+  const order = store.getOrder(input.orderId);
+  if (order.agentId !== input.agentId) {
+    throw new PlatformApiError(403, "Gateway lease does not belong to this Agent.");
+  }
+  if (order.status !== "gateway_lease_issued") {
+    throw new PlatformApiError(403, "Order does not have active Gateway lease access.");
+  }
+  if (!order.gatewayLeaseToken || order.gatewayLeaseToken !== input.gatewayLeaseToken) {
+    throw new PlatformApiError(403, "Gateway lease token is invalid for this order.");
+  }
+}
+
 async function readJsonObject(request: PlatformRequestLike): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   for await (const chunk of request) {
@@ -676,6 +755,13 @@ function readOptionalBoolean(payload: Record<string, unknown>, key: string): boo
     throw new PlatformApiError(400, `${key} must be a boolean.`);
   }
   return value;
+}
+
+function readOptionalLocale(payload: Record<string, unknown>, key: string): "zh" | "en" | undefined {
+  const value = payload[key];
+  if (value === undefined || value === null) return undefined;
+  if (value === "zh" || value === "en") return value;
+  throw new PlatformApiError(400, `${key} must be zh or en.`);
 }
 
 function readRequiredBoolean(payload: Record<string, unknown>, key: string): boolean {

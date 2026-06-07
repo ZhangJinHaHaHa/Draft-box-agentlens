@@ -28,12 +28,12 @@ export function AgentDetailPage({ config }: AgentDetailPageProps): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const { locale, buildPath } = useLocale();
   const { t } = useTranslation("detail");
-  const { byId, nativeStatus } = useCatalog({ config });
+  const { byId, nativeStatus, hostedStatus } = useCatalog({ config });
 
   const entry = id ? byId.get(id) : undefined;
 
   if (!entry) {
-    if (nativeStatus === "loading") {
+    if (nativeStatus === "loading" || hostedStatus === "loading") {
       return (
         <section className="container-page py-24">
           <Card>
@@ -76,6 +76,7 @@ export function AgentDetailPage({ config }: AgentDetailPageProps): JSX.Element {
 
         <RentalEntryCard
           entry={entry}
+          hostedAgentApiUrl={config.hostedAgentApiUrl}
           marketplaceConfigured={Boolean(config.marketplaceAddress)}
           platformApiUrl={config.platformApiUrl}
           web2RentalUrl={config.rentalWeb2Url}

@@ -152,6 +152,7 @@
         "approving": "Approving",
         "refresh": "Refresh summary",
         "refreshing": "Refreshing",
+        "openMarket": "Open marketplace detail",
         "configureSecret": "Configure Gateway secret",
         "configuringSecret": "Configuring",
         "createLease": "Create test lease",

@@ -388,7 +388,7 @@ export function parseRecommendationLlmJson(
   content: string,
   input: RecommendationLlmInput
 ): RecommendationResponse {
-  const parsed = JSON.parse(stripJsonFence(content));
+  const parsed = JSON.parse(extractJsonPayload(content));
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("Recommendation LLM response must be a JSON object.");
   }
@@ -520,4 +520,61 @@ function stripJsonFence(content: string): string {
   const trimmed = content.trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
   return fenced ? fenced[1].trim() : trimmed;
+}
+
+function extractJsonPayload(content: string): string {
+  const stripped = stripJsonFence(content);
+  try {
+    JSON.parse(stripped);
+    return stripped;
+  } catch {
+    // Some OpenAI-compatible providers prepend visible reasoning or prose despite
+    // response_format=json_object. Keep the client strict about the JSON shape,
+    // but recover the first complete object from the assistant message.
+  }
+
+  const firstObject = findFirstJsonObject(stripped);
+  return firstObject ?? stripped;
+}
+
+function findFirstJsonObject(content: string): string | undefined {
+  const start = content.indexOf("{");
+  if (start === -1) {
+    return undefined;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < content.length; index += 1) {
+    const char = content[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return content.slice(start, index + 1).trim();
+      }
+    }
+  }
+
+  return undefined;
 }

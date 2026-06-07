@@ -211,7 +211,16 @@ export interface PaidLlmRecommendationResponse {
   recommendation: RecommendationApiResponse;
 }
 
+export interface PlatformAgentChatResponse {
+  agentId: string;
+  answer: string;
+  engine: string;
+  model: string;
+  safetyNotice: string;
+}
+
 const PAID_LLM_RECOMMENDATION_TIMEOUT_MS = 45_000;
+const PLATFORM_AGENT_CHAT_TIMEOUT_MS = 60_000;
 
 export async function createMockGoogleUser(
   apiBaseUrl: string,
@@ -230,6 +239,22 @@ export async function requestPaidLlmRecommendation(
 ): Promise<PaidLlmRecommendationResponse> {
   const payload = await postJson(apiBaseUrl, "/api/recommendations/llm", request, fetchImpl, timeoutMs);
   return parsePaidLlmRecommendationResponse(payload);
+}
+
+export async function invokePlatformAgent(
+  apiBaseUrl: string,
+  input: {
+    agentId: string;
+    orderId: string;
+    gatewayLeaseToken: string;
+    message: string;
+    locale: "zh" | "en";
+  },
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs = PLATFORM_AGENT_CHAT_TIMEOUT_MS
+): Promise<PlatformAgentChatResponse> {
+  const payload = await postJson(apiBaseUrl, "/api/agent-chat", input, fetchImpl, timeoutMs);
+  return parsePlatformAgentChatResponse(payload);
 }
 
 export async function getPlatformCredits(
@@ -444,7 +469,7 @@ async function getJson(
   const baseUrl = apiBaseUrl.replace(/\/+$/, "");
   const response = await fetchImpl(`${baseUrl}${path}`);
   if (!response.ok) {
-    throw new Error(`Platform API responded with status ${response.status}.`);
+    throw new Error(await buildPlatformApiStatusError(response));
   }
   return response.json();
 }
@@ -482,10 +507,23 @@ async function postJson(
   }
 
   if (!response.ok) {
-    throw new Error(`Platform API responded with status ${response.status}.`);
+    throw new Error(await buildPlatformApiStatusError(response));
   }
 
   return response.json();
+}
+
+async function buildPlatformApiStatusError(response: Response): Promise<string> {
+  const statusPrefix = `Platform API responded with status ${response.status}`;
+  try {
+    const payload = await response.json();
+    const detail = (payload as { error?: unknown }).error;
+    return typeof detail === "string" && detail.trim().length > 0
+      ? `${statusPrefix}: ${detail}`
+      : `${statusPrefix}.`;
+  } catch {
+    return `${statusPrefix}.`;
+  }
 }
 
 function isAbortError(error: unknown): boolean {
@@ -529,6 +567,35 @@ function parsePaidLlmRecommendationResponse(payload: unknown): PaidLlmRecommenda
     costCredits: record.costCredits,
     creditAccount: parseCreditAccount(record.creditAccount),
     recommendation: parseRecommendationApiResponse(record.recommendation)
+  };
+}
+
+function parsePlatformAgentChatResponse(payload: unknown): PlatformAgentChatResponse {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Agent chat response must be an object.");
+  }
+  const record = payload as Record<string, unknown>;
+  if (typeof record.agentId !== "string" || record.agentId.trim().length === 0) {
+    throw new Error("Agent chat response agentId is required.");
+  }
+  if (typeof record.answer !== "string" || record.answer.trim().length === 0) {
+    throw new Error("Agent chat response answer is required.");
+  }
+  if (typeof record.engine !== "string" || record.engine.trim().length === 0) {
+    throw new Error("Agent chat response engine is required.");
+  }
+  if (typeof record.model !== "string" || record.model.trim().length === 0) {
+    throw new Error("Agent chat response model is required.");
+  }
+  if (typeof record.safetyNotice !== "string" || record.safetyNotice.trim().length === 0) {
+    throw new Error("Agent chat response safetyNotice is required.");
+  }
+  return {
+    agentId: record.agentId,
+    answer: record.answer,
+    engine: record.engine,
+    model: record.model,
+    safetyNotice: record.safetyNotice
   };
 }
 
