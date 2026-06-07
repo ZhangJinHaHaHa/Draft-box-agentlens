@@ -5,6 +5,7 @@ import { defaultRecommendationCatalog } from "../../src/recommendation/defaultRe
 import { createMockRecommendationLlmClient } from "../../src/recommendation/recommendationLlmClient";
 import {
   handlePlatformApiRequest,
+  type PlatformApiAgentChatDependencies,
   type PlatformApiRecommendationDependencies
 } from "../../src/platform/platformApiServer";
 import { InMemoryPlatformApiStore } from "../../src/platform/platformApiStore";
@@ -42,20 +43,41 @@ async function callApi(
   method: string,
   url: string,
   body?: unknown,
-  recommendationDependencies?: PlatformApiRecommendationDependencies
+  recommendationDependencies?: PlatformApiRecommendationDependencies,
+  agentChatDependencies?: PlatformApiAgentChatDependencies
 ): Promise<{ statusCode: number; body: Record<string, unknown> }> {
   const response = new MockResponse();
   await handlePlatformApiRequest(
     new MockRequest(method, url, body),
     response,
     store,
-    recommendationDependencies
+    recommendationDependencies,
+    agentChatDependencies
   );
   return {
     statusCode: response.statusCode,
     body: JSON.parse(response.body)
   };
 }
+
+const mockAgentChatDependencies: PlatformApiAgentChatDependencies = {
+  chatClient: {
+    engine: "mock-agent",
+    model: "mock",
+    async invoke(input) {
+      assert.equal(input.agentId, "expert-criminal-defense");
+      assert.equal(input.locale, "zh");
+      assert.match(input.gatewayLeaseToken, /^gateway-lease-/);
+      return {
+        agentId: input.agentId,
+        answer: `刑辩 Agent 已收到：${input.message}`,
+        engine: "mock-agent",
+        model: "mock",
+        safetyNotice: "辅助分析，不构成正式法律意见。"
+      };
+    }
+  }
+};
 
 async function createGoogleUser(store: InMemoryPlatformApiStore): Promise<Record<string, unknown>> {
   const response = await callApi(store, "POST", "/api/web2/google/mock", {
@@ -194,6 +216,69 @@ test("platform API mock payment callback rejects idempotency conflicts", async (
 
   assert.equal(conflictResponse.statusCode, 409);
   assert.match(conflictResponse.body.error as string, /conflicts/);
+});
+
+test("platform API invokes an expert Agent only after Gateway lease issuance", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const user = await createGoogleUser(store);
+  const orderResponse = await callApi(store, "POST", "/api/orders", {
+    userId: user.platformUserId,
+    agentId: "expert-criminal-defense",
+    amount: "20.00"
+  });
+  const order = orderResponse.body.order as Record<string, unknown>;
+  const paidResponse = await callApi(store, "POST", `/api/orders/${order.orderId}/mark-paid`);
+  const paidOrder = paidResponse.body.order as Record<string, unknown>;
+
+  const chatResponse = await callApi(
+    store,
+    "POST",
+    "/api/agent-chat",
+    {
+      agentId: "expert-criminal-defense",
+      orderId: paidOrder.orderId,
+      gatewayLeaseToken: paidOrder.gatewayLeaseToken,
+      message: "请帮我梳理这个案件可能有哪些无罪辩点。",
+      locale: "zh"
+    },
+    undefined,
+    mockAgentChatDependencies
+  );
+
+  assert.equal(chatResponse.statusCode, 200);
+  assert.equal(chatResponse.body.agentId, "expert-criminal-defense");
+  assert.match(chatResponse.body.answer as string, /刑辩 Agent 已收到/);
+});
+
+test("platform API rejects Agent invocation when Gateway lease token does not match", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const user = await createGoogleUser(store);
+  const orderResponse = await callApi(store, "POST", "/api/orders", {
+    userId: user.platformUserId,
+    agentId: "expert-criminal-defense",
+    amount: "20.00"
+  });
+  const order = orderResponse.body.order as Record<string, unknown>;
+  const paidResponse = await callApi(store, "POST", `/api/orders/${order.orderId}/mark-paid`);
+  const paidOrder = paidResponse.body.order as Record<string, unknown>;
+
+  const chatResponse = await callApi(
+    store,
+    "POST",
+    "/api/agent-chat",
+    {
+      agentId: "expert-criminal-defense",
+      orderId: paidOrder.orderId,
+      gatewayLeaseToken: "gateway-lease-wrong",
+      message: "请帮我梳理这个案件可能有哪些无罪辩点。",
+      locale: "zh"
+    },
+    undefined,
+    mockAgentChatDependencies
+  );
+
+  assert.equal(chatResponse.statusCode, 403);
+  assert.match(chatResponse.body.error as string, /invalid/);
 });
 
 test("platform API supports severe incident refund approval", async () => {
@@ -380,6 +465,138 @@ test("platform API recommendation catalog uses local review and reputation signa
   assert.equal(capturedDifySignals?.platformRating, 100);
   assert.equal(capturedDifySignals?.paidOrders, 1);
   assert.equal(capturedDifySignals?.gatewayLeaseIssuedRate, 1);
+});
+
+test("platform API parses natural-language needs through configured LLM endpoint", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  let requestedUrl = "";
+  const response = await callApi(
+    store,
+    "POST",
+    "/api/llm/parse-need",
+    {
+      query: "我需要客服知识库自动回复，低风险",
+      locale: "zh",
+      taxonomy: {
+        scenarioIds: ["customer-support", "knowledge-qa"],
+        tags: ["support", "rag"],
+        accessTypes: ["api", "saas"],
+        riskLevels: ["low", "medium"],
+        complexities: ["low", "medium"]
+      }
+    },
+    {
+      catalog: defaultRecommendationCatalog,
+      costCredits: 3,
+      llmClient: createMockRecommendationLlmClient(),
+      llmConfig: {
+        provider: "openai",
+        apiKey: "sk-test",
+        model: "test-model",
+        apiBaseUrl: "https://llm.example/v1"
+      },
+      async needParserFetchImpl(url) {
+        requestedUrl = String(url);
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: [
+                    "<think>Map the need to allowed filters.</think>",
+                    JSON.stringify({
+                      scenarioIds: ["customer-support", "knowledge-qa", "invented"],
+                      tags: ["support"],
+                      accessTypes: ["api"],
+                      riskLevels: ["low"],
+                      complexities: [],
+                      hasAudit: false,
+                      hasOnboarding: false,
+                      confidence: 0.91,
+                      unmatchedTerms: []
+                    })
+                  ].join("\n")
+                }
+              }
+            ]
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    }
+  );
+
+  const result = response.body.result as Record<string, unknown>;
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.ok, true);
+  assert.equal(requestedUrl, "https://llm.example/v1/chat/completions");
+  assert.deepEqual(result.scenarioIds, ["customer-support", "knowledge-qa"]);
+  assert.deepEqual(result.tags, ["support"]);
+  assert.deepEqual(result.accessTypes, ["api"]);
+  assert.deepEqual(result.riskLevels, ["low"]);
+  assert.equal(result.confidence, 0.91);
+});
+
+test("platform API supplements conservative LLM need parsing with local explicit keyword matches", async () => {
+  const store = new InMemoryPlatformApiStore(() => "2026-06-05T00:00:00.000Z");
+  const response = await callApi(
+    store,
+    "POST",
+    "/api/llm/parse-need",
+    {
+      query: "我需要一个客服 agent，能接 API，低风险",
+      locale: "zh",
+      taxonomy: {
+        scenarioIds: ["customer-support", "knowledge-qa"],
+        tags: ["support", "rag"],
+        accessTypes: ["api", "saas"],
+        riskLevels: ["low", "medium"],
+        complexities: ["low", "medium"]
+      }
+    },
+    {
+      catalog: defaultRecommendationCatalog,
+      costCredits: 3,
+      llmClient: createMockRecommendationLlmClient(),
+      llmConfig: {
+        provider: "openai",
+        apiKey: "sk-test",
+        model: "test-model",
+        apiBaseUrl: "https://llm.example/v1"
+      },
+      async needParserFetchImpl() {
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    scenarioIds: [],
+                    tags: [],
+                    accessTypes: [],
+                    riskLevels: [],
+                    complexities: [],
+                    hasAudit: false,
+                    hasOnboarding: false,
+                    confidence: 1,
+                    unmatchedTerms: []
+                  })
+                }
+              }
+            ]
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    }
+  );
+
+  const result = response.body.result as Record<string, unknown>;
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(result.scenarioIds, ["customer-support"]);
+  assert.deepEqual(result.accessTypes, ["api"]);
+  assert.deepEqual(result.riskLevels, ["low"]);
+  assert.equal(result.confidence, 1);
 });
 
 test("platform API exposes wallet export and migration flows without private key material", async () => {

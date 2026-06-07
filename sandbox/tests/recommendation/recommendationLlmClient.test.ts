@@ -121,6 +121,56 @@ test("openai recommendation client parses valid JSON response", async () => {
   assert.deepEqual(response.results[0].evidenceUsed, ["scenario:knowledge-qa", "priority:self-host"]);
 });
 
+test("parseRecommendationLlmJson extracts JSON after visible reasoning", () => {
+  const response = parseRecommendationLlmJson(
+    [
+      "<think>Let me compare the candidates first.</think>",
+      JSON.stringify({
+        results: [
+          {
+            agentId: baseline.results[0].agentId,
+            score: 89,
+            fitScore: 90,
+            trustScore: 75,
+            riskScore: 24,
+            confidence: "high",
+            recommendationType: "best_fit",
+            reasons: [{ zh: "匹配内部知识库需求", en: "Matches internal knowledge-base needs" }],
+            tradeoffs: [{ zh: "需要配置数据源", en: "Requires data-source setup" }],
+            evidenceUsed: ["scenario:knowledge-qa"],
+            missingEvidence: ["platform_usage"],
+            matchedScenarioIds: ["knowledge-qa"]
+          }
+        ]
+      })
+    ].join("\n"),
+    { catalog: defaultRecommendationCatalog, request, baseline }
+  );
+
+  assert.equal(response.results[0].agentId, baseline.results[0].agentId);
+  assert.equal(response.results[0].score, 89);
+  assert.equal(response.results[0].fitScore, 90);
+});
+
+test("parseRecommendationLlmJson keeps braces inside JSON strings intact", () => {
+  const response = parseRecommendationLlmJson(
+    `模型说明：${JSON.stringify({
+      results: [
+        {
+          agentId: baseline.results[0].agentId,
+          score: 84,
+          reasons: [{ zh: "支持 {RAG} 场景", en: "Supports {RAG} scenarios" }],
+          matchedScenarioIds: ["knowledge-qa"]
+        }
+      ]
+    })}`,
+    { catalog: defaultRecommendationCatalog, request, baseline }
+  );
+
+  assert.equal(response.results[0].score, 84);
+  assert.equal(response.results[0].reasons[0].zh, "支持 {RAG} 场景");
+});
+
 test("openai recommendation client aborts slow requests", async () => {
   const fetchImpl: FetchLike = async (_input, init) =>
     new Promise<Response>((_resolve, reject) => {

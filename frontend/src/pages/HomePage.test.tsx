@@ -55,7 +55,8 @@ vi.mock("@/lib/needParserClient", () => ({
 const config: AppConfig = {
   rpcUrl: "http://127.0.0.1:18545",
   registryAddress: "0x0000000000000000000000000000000000000001",
-  chainId: 302512
+  chainId: 302512,
+  platformApiUrl: "https://platform.example"
 };
 
 function LocationProbe(): JSX.Element {
@@ -122,17 +123,19 @@ describe("HomePage LLM need parsing", () => {
     fireEvent.submit(screen.getByRole("searchbox").closest("form") as HTMLFormElement);
 
     await waitFor(() => {
+      expect(mocks.parseNeedWithLlm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiBaseUrl: "https://platform.example"
+        })
+      );
       expect(screen.getByTestId("location")).toHaveTextContent(
         "/zh/agents?need=%E5%B8%AE%E5%9B%A2%E9%98%9F%E5%81%9A%E4%BB%A3%E7%A0%81%E5%AE%A1%E6%9F%A5&scenario=ide-coding&tag=coding&access=cli"
       );
     });
   });
 
-  it("reports an error and stays on home when the local LLM parser is unavailable", async () => {
-    mocks.parseNeedWithLlm.mockResolvedValue({
-      ok: false,
-      error: "MiniMax API key is not configured for the local dev proxy."
-    });
+  it("shows the parser error only when platform and local fallback both fail", async () => {
+    mocks.parseNeedWithLlm.mockResolvedValue({ ok: false, error: "LLM need parser is unavailable." });
 
     renderHome();
     fireEvent.change(screen.getByRole("searchbox"), {

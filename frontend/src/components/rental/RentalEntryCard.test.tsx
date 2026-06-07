@@ -28,7 +28,8 @@ function renderCard(props: Partial<React.ComponentProps<typeof RentalEntryCard>>
   render(
     <I18nextProvider i18n={i18n}>
       <RentalEntryCard
-        entry={entry}
+        entry={props.entry ?? entry}
+        hostedAgentApiUrl={props.hostedAgentApiUrl}
         marketplaceConfigured={props.marketplaceConfigured ?? false}
         platformApiUrl={props.platformApiUrl}
         web2RentalUrl={props.web2RentalUrl}
@@ -51,6 +52,10 @@ describe("RentalEntryCard", () => {
     expect(screen.getByRole("button", { name: /On-chain rental/i })).toBeDisabled();
     expect(screen.getByText(/Platform API is not configured/i)).toBeInTheDocument();
     expect(screen.getByText(/On-chain grants for Web2\/fiat orders still wait for the grantRentalAccess bridge/i)).toBeInTheDocument();
+    expect(screen.getByText(/Review area \(rental users only\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Unlock after rental/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Rent before reviewing/i })).toBeDisabled();
+    expect(screen.getByText(/Creating a rental produces the first reputation snapshot/i)).toBeInTheDocument();
   });
 
   it("enables the Web2 application link when configured but keeps Web3 read-only", () => {
@@ -301,6 +306,25 @@ describe("RentalEntryCard", () => {
             { status: 201 }
           );
         }
+        if (url === "https://platform.example/api/agent-chat") {
+          expect(init?.method).toBe("POST");
+          expect(JSON.parse(String(init?.body))).toMatchObject({
+            agentId: "cursor",
+            orderId: "order-1",
+            gatewayLeaseToken: "gateway-lease-1",
+            locale: "en"
+          });
+          return new Response(
+            JSON.stringify({
+              agentId: "cursor",
+              answer: "The rented Agent checked the request and returned a concrete next step.",
+              engine: "openai",
+              model: "gpt-5.5",
+              safetyNotice: "This response is a demo invocation result."
+            }),
+            { status: 200 }
+          );
+        }
         if (url === "https://platform.example/api/refunds") {
           expect(init?.method).toBe("POST");
           expect(JSON.parse(String(init?.body))).toMatchObject({
@@ -388,16 +412,244 @@ describe("RentalEntryCard", () => {
     expect(screen.getByText(/MVP-3 local lifecycle/i)).toBeInTheDocument();
     expect(screen.getByText("settlement-1")).toBeInTheDocument();
     expect(screen.getByText(/Platform 4.00 \/ developer 16.00 \/ holdback 1.60 CREDITS/i)).toBeInTheDocument();
-    expect(screen.getByText("91 / high")).toBeInTheDocument();
+    expect(screen.getAllByText("91 / high")).toHaveLength(2);
+    expect(screen.getByText(/Review enabled/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Submit usage review/i })).toBeEnabled();
+    expect(screen.getByText(/Generated after review submission/i)).toBeInTheDocument();
+    expect(screen.getByText(/Expert Agent workspace/i)).toBeInTheDocument();
+    expect(screen.getByText(/Gateway lease verified/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Sample question/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Invoke Agent/i }));
+    await waitFor(() => expect(screen.getByText(/concrete next step/i)).toBeInTheDocument());
+    expect(screen.getByText(/demo invocation result/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Submit usage review/i }));
     await waitFor(() => expect(screen.getByText(/usage-review-1 \/ rating 100/i)).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /Review submitted/i })).toBeDisabled();
-    expect(screen.getByText("99 / high")).toBeInTheDocument();
+    expect(screen.getAllByText("99 / high")).toHaveLength(2);
+    expect(screen.getByText(/Reviewed/i)).toBeInTheDocument();
+    expect(screen.getByText("Local MVP-3 demo review: Gateway lease delivered and capability matched.")).toBeInTheDocument();
+    expect(screen.getByText("0x1111111111111111111111111111111111111111111111111111111111111111")).toBeInTheDocument();
+    expect(screen.getByText("Security")).toBeInTheDocument();
+    expect(screen.getByText("Task execution")).toBeInTheDocument();
+    expect(screen.getAllByText(/2\/2 · Good/i)).toHaveLength(5);
+    expect(screen.getByText(/1\/2 · Neutral/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Reviews$/i)).toBeInTheDocument();
+    expect(screen.getByText("2026-06-05T00:02:00.000Z")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Run refund review/i }));
     await waitFor(() => expect(screen.getByText(/refund-1 \/ partial_refund \/ 6.00/i)).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /Refund reviewed/i })).toBeDisabled();
     expect(screen.getByText("refunded")).toBeInTheDocument();
+  });
+
+  it("creates a hosted Gateway lease for approved hosted marketplace agents", async () => {
+    const hostedEntry: AgentCatalogEntry = {
+      ...entry,
+      id: "hst-001",
+      source: "marketplace",
+      name: "Hosted Research Agent",
+      tags: ["hosted-api", "developer-listed", "rentable"],
+      nativePricing: { rentable: true }
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === "https://platform.example/api/web2/google/mock") {
+          return new Response(
+            JSON.stringify({
+              user: {
+                platformUserId: "web2-user-1",
+                walletAddress: "0x1111111111111111111111111111111111111111",
+                identityWeight: 10,
+                custodyMode: "backend_custodied_exportable",
+                identity: { provider: "google", email: "rental@agentlens.local" }
+              },
+              creditAccount: {
+                userId: "web2-user-1",
+                balance: 100,
+                updatedAt: "2026-06-05T00:00:00.000Z"
+              }
+            }),
+            { status: 201 }
+          );
+        }
+        if (url === "https://platform.example/api/developers") {
+          return new Response(
+            JSON.stringify({
+              developer: {
+                developerId: "developer-1",
+                displayName: "Hosted Research Agent Demo Provider",
+                walletAddress: "0x3333333333333333333333333333333333333333",
+                trustStatus: "verified",
+                trustScore: 82,
+                createdAt: "2026-06-05T00:00:00.000Z",
+                updatedAt: "2026-06-05T00:00:00.000Z"
+              }
+            }),
+            { status: 201 }
+          );
+        }
+        if (url === "https://platform.example/api/developers/developer-1/agents") {
+          return new Response(
+            JSON.stringify({
+              link: {
+                agentId: "hst-001",
+                developerId: "developer-1",
+                linkedAt: "2026-06-05T00:00:00.000Z"
+              }
+            }),
+            { status: 201 }
+          );
+        }
+        if (url === "https://platform.example/api/orders") {
+          expect(JSON.parse(String(init?.body))).toMatchObject({
+            userId: "web2-user-1",
+            agentId: "hst-001"
+          });
+          return new Response(
+            JSON.stringify({
+              order: {
+                orderId: "order-1",
+                userId: "web2-user-1",
+                agentId: "hst-001",
+                status: "pending",
+                amount: "20.00",
+                currency: "CREDITS",
+                createdAt: "2026-06-05T00:00:00.000Z",
+                updatedAt: "2026-06-05T00:00:00.000Z"
+              }
+            }),
+            { status: 201 }
+          );
+        }
+        if (url === "https://platform.example/api/payments/mock-callback") {
+          return new Response(
+            JSON.stringify({
+              order: {
+                orderId: "order-1",
+                userId: "web2-user-1",
+                agentId: "hst-001",
+                status: "gateway_lease_issued",
+                amount: "20.00",
+                currency: "CREDITS",
+                createdAt: "2026-06-05T00:00:00.000Z",
+                updatedAt: "2026-06-05T00:01:00.000Z",
+                paidAt: "2026-06-05T00:01:00.000Z",
+                paidAmount: "20.00",
+                gatewayLeaseToken: "platform-gateway-lease-1",
+                gatewayLeaseIssuedAt: "2026-06-05T00:01:00.000Z",
+                gatewayLeaseExpiresAt: "2026-07-05T00:01:00.000Z",
+                chainGrantStatus: "pending_chain_grant"
+              },
+              bridge: {
+                bridgeId: "access-bridge-1",
+                orderId: "order-1",
+                status: "pending_chain_grant",
+                expectedGrantFunction: "grantRentalAccess",
+                gatewayLeaseToken: "platform-gateway-lease-1",
+                gatewayLeaseIssuedAt: "2026-06-05T00:01:00.000Z",
+                gatewayLeaseExpiresAt: "2026-07-05T00:01:00.000Z"
+              },
+              idempotentReplay: false
+            }),
+            { status: 200 }
+          );
+        }
+        if (url === "https://hosted.example/api/hosted-agents/hst-001/leases") {
+          expect(init?.method).toBe("POST");
+          expect(JSON.parse(String(init?.body))).toMatchObject({
+            userId: "web2-user-1",
+            durationHours: 24,
+            maxRequests: 20,
+            maxRequestsPerMinute: 5
+          });
+          return new Response(
+            JSON.stringify({
+              hostedAgentId: "hst-001",
+              lease: {
+                leaseId: "hosted-lease-1",
+                hostedAgentId: "hst-001",
+                userId: "web2-user-1",
+                accessToken: "hosted-access-token-1",
+                createdAt: "2026-06-05T00:01:10.000Z",
+                expiresAt: "2026-06-06T00:01:10.000Z",
+                maxRequests: 20,
+                maxRequestsPerMinute: 5,
+                requestCount: 0
+              }
+            }),
+            {
+              status: 201,
+              headers: { "Content-Type": "application/json" }
+            }
+          );
+        }
+        if (url === "https://platform.example/api/settlements/orders/order-1") {
+          return new Response(
+            JSON.stringify({
+              settlement: {
+                settlementId: "settlement-1",
+                orderId: "order-1",
+                agentId: "hst-001",
+                developerId: "developer-1",
+                grossAmount: "20.00",
+                currency: "CREDITS",
+                platformFeeAmount: "4.00",
+                developerShareAmount: "16.00",
+                holdbackAmount: "1.60",
+                payableAmount: "14.40",
+                status: "pending_holdback",
+                updatedAt: "2026-06-05T00:01:00.000Z"
+              }
+            }),
+            { status: 200 }
+          );
+        }
+        if (url === "https://platform.example/api/reputation/agents/hst-001") {
+          return new Response(
+            JSON.stringify({
+              reputation: {
+                subjectType: "agent",
+                subjectId: "hst-001",
+                score: 91,
+                tier: "high",
+                source: "local-farr-adapter",
+                updatedAt: "2026-06-05T00:02:00.000Z",
+                signals: {
+                  paidOrders: 1,
+                  gatewayLeasesIssued: 1,
+                  pendingChainGrants: 1,
+                  refunds: 0,
+                  severeRefunds: 0,
+                  reviewCount: 0,
+                  averageRating: null,
+                  platformRating: null,
+                  capabilityMismatchReports: 0,
+                  safetyIncidentReports: 0,
+                  developerTrustScore: 82
+                }
+              }
+            }),
+            { status: 200 }
+          );
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      })
+    );
+
+    renderCard({
+      entry: hostedEntry,
+      platformApiUrl: "https://platform.example",
+      hostedAgentApiUrl: "https://hosted.example/api/hosted-agents"
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Create local rental/i }));
+
+    await waitFor(() => expect(screen.getByText(/Local rental created/i)).toBeInTheDocument());
+    expect(screen.getByText("platform-gateway-lease-1")).toBeInTheDocument();
+    expect(screen.getByText("hosted-access-token-1")).toBeInTheDocument();
+    expect(screen.getByText(/Hosted Agent Gateway unlocked/i)).toBeInTheDocument();
   });
 });

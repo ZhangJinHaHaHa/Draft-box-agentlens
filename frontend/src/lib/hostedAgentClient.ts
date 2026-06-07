@@ -24,12 +24,33 @@ export interface HostedAgentDraftInput {
   developerAddress?: string;
 }
 
+export type HostedAgentStatus = "draft" | "pending_review" | "approved" | "suspended";
+
+export interface HostedAgentDraftPayload extends HostedAgentDraftInput {
+  hostedAgentId: string;
+  status: HostedAgentStatus;
+  createdAt: string;
+  updatedAt: string;
+  review?: HostedAgentReviewSubmissionPayload;
+  approval?: HostedAgentApprovalPayload;
+}
+
 export type HostedAgentDraftResult =
   | {
       ok: true;
       hostedAgentId: string;
       status: string;
       createdAt?: string;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+export type HostedAgentListResult =
+  | {
+      ok: true;
+      items: HostedAgentDraftPayload[];
     }
   | {
       ok: false;
@@ -79,6 +100,14 @@ export interface HostedAgentApprovalPayload {
   approvedAt: string;
   reviewer?: string;
   note?: string;
+}
+
+export interface HostedAgentReviewSubmissionPayload {
+  reviewKind: string;
+  submittedAt: string;
+  fingerprint: HostedAgentFingerprintPayload;
+  healthcheck: HostedAgentHealthcheckPayload;
+  notes: string[];
 }
 
 export type HostedAgentApprovalResult =
@@ -180,6 +209,47 @@ export type HostedAgentGatewaySummaryResult =
 export interface HostedAgentClientDependencies {
   endpointUrl: string;
   fetchImpl?: typeof fetch;
+}
+
+export async function listHostedAgents({
+  endpointUrl,
+  fetchImpl = fetch
+}: HostedAgentClientDependencies): Promise<HostedAgentListResult> {
+  let response: Response;
+
+  try {
+    response = await fetchImpl(endpointUrl, {
+      method: "GET"
+    });
+  } catch {
+    return {
+      ok: false,
+      error: "Failed to load hosted Agent listings."
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: (await readErrorMessage(response)) ?? "The hosted Agent listings could not be loaded."
+    };
+  }
+
+  const payload = await readJsonPayload(response);
+  const items = readArrayField(payload, "items");
+  if (!items) {
+    return {
+      ok: false,
+      error: "The hosted Agent API returned an invalid listing response."
+    };
+  }
+
+  return {
+    ok: true,
+    items: items
+      .map((item) => parseHostedAgentDraft(item))
+      .filter((item): item is HostedAgentDraftPayload => Boolean(item))
+  };
 }
 
 export async function submitHostedAgentDraft(
@@ -564,6 +634,103 @@ function readRecordField(payload: unknown, field: string): Record<string, unknow
     : undefined;
 }
 
+function readArrayField(payload: unknown, field: string): unknown[] | undefined {
+  if (!payload || typeof payload !== "object") {
+    return undefined;
+  }
+
+  const value = (payload as Record<string, unknown>)[field];
+  return Array.isArray(value) ? value : undefined;
+}
+
+function parseHostedAgentDraft(payload: unknown): HostedAgentDraftPayload | undefined {
+  const hostedAgentId = readStringField(payload, "hostedAgentId");
+  const status = readHostedAgentStatus(readStringField(payload, "status"));
+  const createdAt = readStringField(payload, "createdAt");
+  const updatedAt = readStringField(payload, "updatedAt");
+  const readme = parseReadme(readRecordField(payload, "readme"));
+  const integration = parseIntegration(readRecordField(payload, "integration"));
+
+  if (!hostedAgentId || !status || !createdAt || !updatedAt || !readme || !integration) {
+    return undefined;
+  }
+
+  return {
+    hostedAgentId,
+    status,
+    createdAt,
+    updatedAt,
+    readme,
+    integration,
+    developerAddress: readStringField(payload, "developerAddress"),
+    ...(parseReviewSubmission(readRecordField(payload, "review"))
+      ? { review: parseReviewSubmission(readRecordField(payload, "review")) }
+      : {}),
+    ...(parseApproval(readRecordField(payload, "approval"))
+      ? { approval: parseApproval(readRecordField(payload, "approval")) }
+      : {})
+  };
+}
+
+function parseReadme(payload: unknown): HostedAgentReadmePayload | undefined {
+  const agentName = readStringField(payload, "agentName");
+  const summary = readStringField(payload, "summary");
+  const integrationType = readStringField(payload, "integrationType");
+
+  if (!agentName || !summary || !integrationType) {
+    return undefined;
+  }
+
+  return {
+    agentName,
+    displayName: readStringField(payload, "displayName"),
+    summary,
+    useCases: readStringArrayField(payload, "useCases"),
+    capabilities: readStringArrayField(payload, "capabilities"),
+    limitations: readStringArrayField(payload, "limitations"),
+    example: readStringField(payload, "example"),
+    integrationType,
+    docsUrl: readStringField(payload, "docsUrl"),
+    supportUrl: readStringField(payload, "supportUrl")
+  };
+}
+
+function parseIntegration(payload: unknown): HostedAgentIntegrationPayload | undefined {
+  const endpointUrl = readStringField(payload, "endpointUrl");
+  const schemaUrl = readStringField(payload, "schemaUrl");
+  const authMethod = readStringField(payload, "authMethod");
+
+  if (!endpointUrl || !schemaUrl || !authMethod) {
+    return undefined;
+  }
+
+  return {
+    endpointUrl,
+    schemaUrl,
+    healthcheckUrl: readStringField(payload, "healthcheckUrl"),
+    authMethod
+  };
+}
+
+function parseReviewSubmission(payload: unknown): HostedAgentReviewSubmissionPayload | undefined {
+  const reviewKind = readStringField(payload, "reviewKind");
+  const submittedAt = readStringField(payload, "submittedAt");
+  const fingerprint = parseFingerprint(readRecordField(payload, "fingerprint"));
+  const healthcheck = parseHealthcheck(readRecordField(payload, "healthcheck"));
+
+  if (!reviewKind || !submittedAt || !fingerprint || !healthcheck) {
+    return undefined;
+  }
+
+  return {
+    reviewKind,
+    submittedAt,
+    fingerprint,
+    healthcheck,
+    notes: readStringArrayField(payload, "notes")
+  };
+}
+
 function parseHostedReviewPayload(payload: unknown): HostedAgentReviewResult | undefined {
   const hostedAgentId = readStringField(payload, "hostedAgentId");
   const fingerprintRecord = readRecordField(payload, "fingerprint");
@@ -713,4 +880,10 @@ function parseHealthcheck(payload: unknown): HostedAgentHealthcheckPayload | und
 
 function isHostedHealthcheckStatus(value: string | undefined): value is HostedAgentHealthcheckStatus {
   return value === "not_configured" || value === "passed" || value === "failed";
+}
+
+function readHostedAgentStatus(value: string | undefined): HostedAgentStatus | undefined {
+  return value === "draft" || value === "pending_review" || value === "approved" || value === "suspended"
+    ? value
+    : undefined;
 }

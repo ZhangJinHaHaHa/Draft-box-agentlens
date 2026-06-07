@@ -68,7 +68,8 @@ export function HomePage({ config }: HomePageProps): JSX.Element {
     const parsed = await parseNeedWithLlm({
       query: trimmed,
       locale,
-      taxonomy: buildNeedParserTaxonomy(entries)
+      taxonomy: buildNeedParserTaxonomy(entries),
+      apiBaseUrl: config.platformApiUrl
     });
     setIsParsingNeed(false);
 

@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import type { PlatformAgentChatLlmConfig } from "./agentChatClient";
 import type { RecommendationLlmConfig } from "../recommendation/recommendationLlmClient";
 import { resolvePlatformApiStateDir } from "./persistentPlatformApiStore";
 
@@ -10,6 +11,7 @@ export interface PlatformApiConfig {
   recommendationCostCredits: number;
   recommendationCatalogPath?: string;
   recommendationLlm: RecommendationLlmConfig;
+  agentChatLlm: PlatformAgentChatLlmConfig;
 }
 
 export function readPlatformApiConfig(
@@ -27,13 +29,44 @@ export function readPlatformApiConfig(
       "PLATFORM_LLM_RECOMMENDATION_COST_CREDITS"
     ),
     ...(recommendationCatalogPath ? { recommendationCatalogPath: path.resolve(recommendationCatalogPath) } : {}),
-    recommendationLlm: readRecommendationLlmConfig(env)
+    recommendationLlm: readRecommendationLlmConfig(env),
+    agentChatLlm: readAgentChatLlmConfig(env)
   };
 }
 
 function readOptionalString(value: string | undefined): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function readAgentChatLlmConfig(
+  env: NodeJS.ProcessEnv | Record<string, string | undefined>
+): PlatformAgentChatLlmConfig {
+  const provider = readOptionalString(env.PLATFORM_AGENT_LLM_PROVIDER) ?? "mock";
+  if (provider !== "mock" && provider !== "openai") {
+    throw new Error("PLATFORM_AGENT_LLM_PROVIDER must be mock or openai.");
+  }
+
+  if (provider === "mock") {
+    return { provider };
+  }
+
+  const apiKey = readOptionalString(env.PLATFORM_AGENT_LLM_API_KEY);
+  const model = readOptionalString(env.PLATFORM_AGENT_LLM_MODEL) ?? "gpt-5.5";
+  const apiBaseUrl = readOptionalString(env.PLATFORM_AGENT_LLM_API_BASE_URL);
+  const timeoutMs = readPositiveInt(
+    env.PLATFORM_AGENT_LLM_TIMEOUT_MS,
+    45_000,
+    "PLATFORM_AGENT_LLM_TIMEOUT_MS"
+  );
+
+  return {
+    provider,
+    ...(apiKey ? { apiKey } : {}),
+    model,
+    ...(apiBaseUrl ? { apiBaseUrl } : {}),
+    timeoutMs
+  };
 }
 
 function readPort(value: string | undefined, fallback: number): number {

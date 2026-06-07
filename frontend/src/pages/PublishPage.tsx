@@ -1070,6 +1070,14 @@ export function PublishPage({ config }: PublishPageProps): JSX.Element {
                             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
                             {hostedGatewayAction === "summary" ? t("hosted.gateway.actions.refreshing") : t("hosted.gateway.actions.refresh")}
                           </Button>
+                          {hostedApproved ? (
+                            <Button asChild size="sm">
+                              <Link to={buildPath(`/agent/${hostedDraftResult.hostedAgentId}`)}>
+                                {t("hosted.gateway.actions.openMarket")}
+                                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                              </Link>
+                            </Button>
+                          ) : null}
                         </div>
 
                         <Separator className="my-4" />

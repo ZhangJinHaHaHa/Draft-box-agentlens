@@ -51,7 +51,8 @@ vi.mock("@/lib/needParserClient", () => ({
 const config: AppConfig = {
   rpcUrl: "http://127.0.0.1:18545",
   registryAddress: "0x0000000000000000000000000000000000000001",
-  chainId: 302512
+  chainId: 302512,
+  platformApiUrl: "https://platform.example"
 };
 
 function LocationProbe(): JSX.Element {
@@ -109,7 +110,8 @@ describe("AgentListPage semantic search fallback", () => {
       expect(mocks.parseNeedWithLlm).toHaveBeenCalledWith(
         expect.objectContaining({
           query: "我要做ppt",
-          locale: "zh"
+          locale: "zh",
+          apiBaseUrl: "https://platform.example"
         })
       );
     });
