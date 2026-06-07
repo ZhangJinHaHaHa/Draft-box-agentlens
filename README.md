@@ -9,7 +9,7 @@
 [![TEE](https://img.shields.io/badge/TEE-Intel_SGX-0071C5.svg)](https://www.intel.com/content/www/us/en/developer/tools/software-guard-extensions/overview.html)
 [![ZK](https://img.shields.io/badge/ZK-Circom-8A2BE2.svg)](https://docs.circom.io/)
 
-可信 AI Agent 选型、审计与交易基础设施。
+专业知识可分发、顶尖专家可调用的可信 Agent 平台。
 
 [线上演示](http://154.89.157.252:5173/zh) · [Agent 列表](http://154.89.157.252:5173/zh/agents) · [需求推荐](http://154.89.157.252:5173/zh/recommend) · [发布入口](http://154.89.157.252:5173/zh/publish)
 
@@ -17,12 +17,16 @@
 
 ---
 
-AgentLens 面向 AI Agent 经济中的信任问题：在用户雇佣、试用或集成一个 Agent 之前，平台先帮助用户看清它适合什么场景、风险在哪里、如何开始使用，以及是否有可验证的审计和运行证据。
+AgentLens 面向 AI Agent 经济中的分发与信任问题：专业服务正在被封装成可调用的 Agent，但买卖双方仍然缺少一个可信平台来完成发现、试用、租赁、评价和信誉积累。
+
+对卖家来说，AgentLens 是一个把专业领域知识无限分发的平台杠杆：把专家经验封装成可租赁、可审计、可复用的 Agent，让一次服务能力变成可以持续触达用户的程序能力。
+
+对买家来说，AgentLens 让你和领域最顶尖的专家只隔了一道程序：用户可以直接描述需求，找到匹配的专家型 Agent，查看风险、起步方式和可信证据，再通过平台租赁和调用。
 
 当前版本采用双层结构：
 
 - 前台是面向终端用户的 Agent 选型决策平台，支持搜索、筛选、详情页、起步指南和需求推荐。
-- 后台是平台原生 Agent 的信任与交易基础设施，包含链上注册、沙箱审计、TEE attestation、ZK proof、动态信誉、租赁和评论能力。
+- 后台是平台原生 Agent 的信任与交易基础设施，包含链上注册、沙箱审计、TEE attestation、ZK proof、动态信誉、租赁和租赁后评价能力。
 
 ## 核心能力
 
@@ -32,7 +36,8 @@ AgentLens 面向 AI Agent 经济中的信任问题：在用户雇佣、试用或
 - 六维风险画像：审计系统围绕 Security、Task Execution、Cognitive、Environment、Engineering、Compliance 六个维度生成风险与场景适配结论。
 - TEE attestation：沙箱审计可以绑定 Intel SGX/DCAP 远程证明，让审计执行过程具备硬件级完整性证据。
 - ZK proof：通过 circom/snarkjs 证明审计分数和 Agent 指纹计算过程，而不暴露底层私有代码。
-- 可信交易市场：合约层支持 Agent 质押、租赁、购买、访问权检查、用户评论与动态信誉更新。
+- 专家能力市场：平台支持 Agent 质押、租赁、购买、访问权检查、租赁后评价和动态信誉更新，让专业能力可以被发现、调用并持续沉淀口碑。
+- 评价锚定路径：当前 MVP 已完成租赁后评价、评论哈希、六维指标和信誉更新的业务闭环；评论正文保存在链下，评论哈希与指标已按链上锚定格式进入 Platform API，下一步通过 Review Registry / operator bridge 锚定到链上，形成可验证信誉记录。
 
 ## 架构
 
@@ -47,6 +52,11 @@ graph TD
         M["AgentMarketplace"]
         Rev["AgentReviewRegistry"]
         Z["ZkAuditVerifier"]
+    end
+
+    subgraph "Platform API (MVP)"
+        P["Platform API"]
+        B["Operator Bridge (next step)"]
     end
 
     subgraph "Off-chain Infrastructure"
@@ -64,7 +74,9 @@ graph TD
         F -->|"need-based matching"| Rec["Recommendation API"]
         F -->|"inspect evidence"| R
         F -->|"rent / buy / review"| M
-        F -->|"leave review"| Rev
+        F -->|"post-rental review"| P
+        P -->|"review hash + six metrics"| B
+        B -->|"anchor verifiable reputation"| Rev
     end
 ```
 
@@ -153,7 +165,7 @@ npm run run:platform:mvp-smoke
 
 - `AgentAuditRegistryV2/V3`：Agent 注册、质押、审计结果、申诉、信誉和时间衰减逻辑。
 - `AgentMarketplace`：租赁、买断、访问权检查和价格配置。
-- `AgentReviewRegistry`：基于访问权的六维评分与链上评论哈希。
+- `AgentReviewRegistry`：承接下一步 operator bridge，把租赁后评价哈希和六维指标锚定为可验证信誉记录。
 - `ZkAuditVerifier`：记录通过验证的 Groth16 审计分数证明和 Agent 指纹证明。
 
 ### 审计沙箱 (`sandbox`)
